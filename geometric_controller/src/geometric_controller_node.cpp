@@ -49,7 +49,9 @@ int main(int argc, char** argv) {
 
   dynamic_reconfigure::Server<geometric_controller::GeometricControllerConfig> srv;
   dynamic_reconfigure::Server<geometric_controller::GeometricControllerConfig>::CallbackType f;
+
   f = boost::bind(&geometricCtrl::dynamicReconfigureCallback, geometricController, _1, _2);
+  
   srv.setCallback(f);
 
   ros::spin();

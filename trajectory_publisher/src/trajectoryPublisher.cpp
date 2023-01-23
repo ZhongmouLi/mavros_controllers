@@ -44,7 +44,7 @@ trajectoryPublisher::trajectoryPublisher(const ros::NodeHandle& nh, const ros::N
     : nh_(nh), nh_private_(nh_private), motion_selector_(0) {
   trajectoryPub_ = nh_.advertise<nav_msgs::Path>("trajectory_publisher/trajectory", 1);
   referencePub_ = nh_.advertise<geometry_msgs::TwistStamped>("reference/setpoint", 1);
-  flatreferencePub_ = nh_.advertise<controller_msgs::FlatTarget>("reference/flatsetpoint", 1);
+  // flatreferencePub_ = nh_.advertise<controller_msgs::FlatTarget>("reference/flatsetpoint", 1);
   rawreferencePub_ = nh_.advertise<mavros_msgs::PositionTarget>("mavros/setpoint_raw/local", 1);
   global_rawreferencePub_ = nh_.advertise<mavros_msgs::GlobalPositionTarget>("mavros/setpoint_raw/global", 1);
   motionselectorSub_ =
@@ -73,31 +73,36 @@ trajectoryPublisher::trajectoryPublisher(const ros::NodeHandle& nh, const ros::N
 
   inputs_.resize(num_primitives_);
 
-  if (trajectory_type_ == 0) {  // Polynomial Trajectory
+  if (trajectory_type_ == 0) { 
+      // Polynomial Trajectory
+      // TODO change inputs.at to see
+      if (num_primitives_ == 7) {
+        inputs_.at(0) << 0.0, 0.0, 0.0;  // Constant jerk inputs for minimim time trajectories
+        inputs_.at(1) << 1.0, 0.0, 0.0;
+        inputs_.at(2) << -1.0, 0.0, 0.0;
+        inputs_.at(3) << 0.0, 1.0, 0.0;
+        inputs_.at(4) << 0.0, -1.0, 0.0;
+        inputs_.at(5) << 0.0, 0.0, 1.0;
+        inputs_.at(6) << 0.0, 0.0, -1.0;
+      }
 
-    if (num_primitives_ == 7) {
-      inputs_.at(0) << 0.0, 0.0, 0.0;  // Constant jerk inputs for minimim time trajectories
-      inputs_.at(1) << 1.0, 0.0, 0.0;
-      inputs_.at(2) << -1.0, 0.0, 0.0;
-      inputs_.at(3) << 0.0, 1.0, 0.0;
-      inputs_.at(4) << 0.0, -1.0, 0.0;
-      inputs_.at(5) << 0.0, 0.0, 1.0;
-      inputs_.at(6) << 0.0, 0.0, -1.0;
-    }
-
-    for (int i = 0; i < num_primitives_; i++) {
-      motionPrimitives_.emplace_back(std::make_shared<polynomialtrajectory>());
-      primitivePub_.push_back(
-          nh_.advertise<nav_msgs::Path>("trajectory_publisher/primitiveset" + std::to_string(i), 1));
-      inputs_.at(i) = inputs_.at(i) * max_jerk_;
-    }
-  } else {  // Shape trajectories
-
+      for (int i = 0; i < num_primitives_; i++) {
+        // TO DO
+        // 7 times-> motionPrimitives_ 7 X 1
+        motionPrimitives_.emplace_back(std::make_shared<polynomialtrajectory>());
+        primitivePub_.push_back(
+            nh_.advertise<nav_msgs::Path>("trajectory_publisher/primitiveset" + std::to_string(i), 1));
+        inputs_.at(i) = inputs_.at(i) * max_jerk_;
+      }
+  } //
+  else { 
+  // Shape trajectories  
     num_primitives_ = 1;
     motionPrimitives_.emplace_back(std::make_shared<shapetrajectory>(trajectory_type_));
     primitivePub_.push_back(nh_.advertise<nav_msgs::Path>("trajectory_publisher/primitiveset", 1));
   }
 
+  // initial position of drone
   p_targ << init_pos_x_, init_pos_y_, init_pos_z_;
   v_targ << 0.0, 0.0, 0.0;
   shape_origin_ << init_pos_x_, init_pos_y_, init_pos_z_;
@@ -117,10 +122,14 @@ void trajectoryPublisher::updateReference() {
 }
 
 void trajectoryPublisher::initializePrimitives(int type) {
+  // trajectory_type_
   if (type == 0) {
-    for (int i = 0; i < motionPrimitives_.size(); i++)
-      motionPrimitives_.at(i)->generatePrimitives(p_mav_, v_mav_, inputs_.at(i));
-  } else {
+    // Polynomial Trajectory
+      for (int i = 0; i < motionPrimitives_.size(); i++)
+        motionPrimitives_.at(i)->generatePrimitives(p_mav_, v_mav_, inputs_.at(i));
+  } //
+  else {
+    // // Shape trajectories  
     for (int i = 0; i < motionPrimitives_.size(); i++)
       motionPrimitives_.at(i)->initPrimitives(shape_origin_, shape_axis_, shape_omega_);
     // TODO: Pass in parameters for primitive trajectories
@@ -162,28 +171,37 @@ void trajectoryPublisher::pubrefState() {
   referencePub_.publish(msg);
 }
 
-void trajectoryPublisher::pubflatrefState() {
-  controller_msgs::FlatTarget msg;
+// void trajectoryPublisher::pubflatrefState() {
+//   controller_msgs::FlatTarget msg;
 
-  msg.header.stamp = ros::Time::now();
-  msg.header.frame_id = "map";
-  msg.type_mask = pubreference_type_;
-  msg.position.x = p_targ(0);
-  msg.position.y = p_targ(1);
-  msg.position.z = p_targ(2);
-  msg.velocity.x = v_targ(0);
-  msg.velocity.y = v_targ(1);
-  msg.velocity.z = v_targ(2);
-  msg.acceleration.x = a_targ(0);
-  msg.acceleration.y = a_targ(1);
-  msg.acceleration.z = a_targ(2);
-  flatreferencePub_.publish(msg);
-}
+//   msg.header.stamp = ros::Time::now();
+//   msg.header.frame_id = "map";
+//   msg.type_mask = pubreference_type_;
+//   msg.position.x = p_targ(0);
+//   msg.position.y = p_targ(1);
+//   msg.position.z = p_targ(2);
+//   msg.velocity.x = v_targ(0);
+//   msg.velocity.y = v_targ(1);
+//   msg.velocity.z = v_targ(2);
+//   msg.acceleration.x = a_targ(0);
+//   msg.acceleration.y = a_targ(1);
+//   msg.acceleration.z = a_targ(2);
+//   flatreferencePub_.publish(msg);
+// }
 
 void trajectoryPublisher::pubrefSetpointRaw() {
   mavros_msgs::PositionTarget msg;
   msg.header.stamp = ros::Time::now();
   msg.header.frame_id = "map";
+  // added by Zhongmou LI
+  /*Known
+  uint8 FRAME_LOCAL_NED = 1
+  uint8 FRAME_LOCAL_OFFSET_NED = 7
+  uint8 FRAME_BODY_NED = 8
+  uint8 FRAME_BODY_OFFSET_NED = 9
+  */
+  msg.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
+  //msg.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX | mavros_msgs::PositionTarget::IGNORE_AFY| mavros_msgs::PositionTarget::IGNORE_AFZ|mavros_msgs::PositionTarget::IGNORE_VX|mavros_msgs::PositionTarget::IGNORE_VY|mavros_msgs::PositionTarget::IGNORE_VZ;
   msg.type_mask = 0;
   msg.position.x = p_targ(0);
   msg.position.y = p_targ(1);
@@ -197,24 +215,24 @@ void trajectoryPublisher::pubrefSetpointRaw() {
   rawreferencePub_.publish(msg);
 }
 
-void trajectoryPublisher::pubrefSetpointRawGlobal() {
-  mavros_msgs::GlobalPositionTarget msg;
+// void trajectoryPublisher::pubrefSetpointRawGlobal() {
+//   mavros_msgs::GlobalPositionTarget msg;
 
-  msg.header.stamp = ros::Time::now();
-  msg.header.frame_id = "map";
-  msg.type_mask = 0;
-  msg.coordinate_frame = 5;
-  msg.latitude = 47.397742;
-  msg.longitude = 8.545594;
-  msg.altitude = 500.0;
-  msg.velocity.x = v_targ(0);
-  msg.velocity.y = v_targ(1);
-  msg.velocity.z = v_targ(2);
-  msg.acceleration_or_force.x = a_targ(0);
-  msg.acceleration_or_force.y = a_targ(1);
-  msg.acceleration_or_force.z = a_targ(2);
-  global_rawreferencePub_.publish(msg);
-}
+//   msg.header.stamp = ros::Time::now();
+//   msg.header.frame_id = "map";
+//   msg.type_mask = 0;
+//   msg.coordinate_frame = 5;
+//   msg.latitude = 47.397742;
+//   msg.longitude = 8.545594;
+//   msg.altitude = 500.0;
+//   msg.velocity.x = v_targ(0);
+//   msg.velocity.y = v_targ(1);
+//   msg.velocity.z = v_targ(2);
+//   msg.acceleration_or_force.x = a_targ(0);
+//   msg.acceleration_or_force.y = a_targ(1);
+//   msg.acceleration_or_force.z = a_targ(2);
+//   global_rawreferencePub_.publish(msg);
+// }
 
 void trajectoryPublisher::loopCallback(const ros::TimerEvent& event) {
   // Slow Loop publishing trajectory information
@@ -234,7 +252,7 @@ void trajectoryPublisher::refCallback(const ros::TimerEvent& event) {
       // pubrefSetpointRawGlobal();
       break;
     default:
-      pubflatrefState();
+      // pubflatrefState();
       break;
   }
 }

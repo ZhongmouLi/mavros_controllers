@@ -51,35 +51,74 @@ geometricCtrl::geometricCtrl(const ros::NodeHandle &nh, const ros::NodeHandle &n
       landing_commanded_(false),
       feedthrough_enable_(false),
       node_state(WAITING_FOR_HOME_POSE) {
+
+  /*
+      define subscribers
+  */      
+
+   // subscribed to position reference
   referenceSub_ =
       nh_.subscribe("reference/setpoint", 1, &geometricCtrl::targetCallback, this, ros::TransportHints().tcpNoDelay());
+
+  // topic flatsetpoint corresponds to user-defined message 
   flatreferenceSub_ = nh_.subscribe("reference/flatsetpoint", 1, &geometricCtrl::flattargetCallback, this,
                                     ros::TransportHints().tcpNoDelay());
+
+  // subscribed to yaw angle reference                                  
   yawreferenceSub_ =
       nh_.subscribe("reference/yaw", 1, &geometricCtrl::yawtargetCallback, this, ros::TransportHints().tcpNoDelay());
-  multiDOFJointSub_ = nh_.subscribe("command/trajectory", 1, &geometricCtrl::multiDOFJointCallback, this,
+  multiDOFJointSub_ = nh_.subscribe("command/trajectory", 1, &geometricCtrl::multiDOFJointCallback, this,  
                                     ros::TransportHints().tcpNoDelay());
+
+  // subscribe to drone state by mavros/state                                  
   mavstateSub_ =
       nh_.subscribe("mavros/state", 1, &geometricCtrl::mavstateCallback, this, ros::TransportHints().tcpNoDelay());
+
+  // subscribe to drone pose  by  mavros/local_position/pose  
   mavposeSub_ = nh_.subscribe("mavros/local_position/pose", 1, &geometricCtrl::mavposeCallback, this,
                               ros::TransportHints().tcpNoDelay());
+
+  // subscribe to drone (linear and angular) twist  by  mavros/local_position/velocity_local  
   mavtwistSub_ = nh_.subscribe("mavros/local_position/velocity_local", 1, &geometricCtrl::mavtwistCallback, this,
                                ros::TransportHints().tcpNoDelay());
+                               
   ctrltriggerServ_ = nh_.advertiseService("trigger_rlcontroller", &geometricCtrl::ctrltriggerCallback, this);
-  cmdloop_timer_ = nh_.createTimer(ros::Duration(0.01), &geometricCtrl::cmdloopCallback,
-                                   this);  // Define timer for constant loop rate
-  statusloop_timer_ = nh_.createTimer(ros::Duration(1), &geometricCtrl::statusloopCallback,
-                                      this);  // Define timer for constant loop rate
 
+  /*
+    Timer is to schedule a callback to happen at a specific rate through the same callback queue mechanism used by subscription, 
+  */  
+  // Define timer for constant loop rate
+  // Let us say it is a subscriber with a fixed frequency
+  cmdloop_timer_ = nh_.createTimer(ros::Duration(0.01), &geometricCtrl::cmdloopCallback,
+                                   this);  
+
+  // Define timer for constant loop rate                                   
+  statusloop_timer_ = nh_.createTimer(ros::Duration(1), &geometricCtrl::statusloopCallback,
+                                      this);  
+  /*
+      define publishers
+  */   
+  // pusb 
   angularVelPub_ = nh_.advertise<mavros_msgs::AttitudeTarget>("command/bodyrate_command", 1);
+
   referencePosePub_ = nh_.advertise<geometry_msgs::PoseStamped>("reference/pose", 1);
+  
   target_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
+  
   posehistoryPub_ = nh_.advertise<nav_msgs::Path>("geometric_controller/path", 10);
+  
   systemstatusPub_ = nh_.advertise<mavros_msgs::CompanionProcessStatus>("mavros/companion_process/status", 1);
+  
   arming_client_ = nh_.serviceClient<mavros_msgs::CommandBool>("mavros/cmd/arming");
+  
   set_mode_client_ = nh_.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
+  
   land_service_ = nh_.advertiseService("land", &geometricCtrl::landCallback, this);
 
+  /*
+     get parameters using parivate handel
+  */   
+  // "default_param", default_param, "default_value"
   nh_private_.param<string>("mavname", mav_name_, "iris");
   nh_private_.param<int>("ctrl_mode", ctrl_mode_, ERROR_QUATERNION);
   nh_private_.param<bool>("enable_sim", sim_enable_, true);
@@ -108,6 +147,8 @@ geometricCtrl::geometricCtrl(const ros::NodeHandle &nh, const ros::NodeHandle &n
   mavPos_ << 0.0, 0.0, 0.0;
   mavVel_ << 0.0, 0.0, 0.0;
   g_ << 0.0, 0.0, -9.8;
+
+
   Kpos_ << -Kpos_x_, -Kpos_y_, -Kpos_z_;
   Kvel_ << -Kvel_x_, -Kvel_y_, -Kvel_z_;
 
@@ -115,10 +156,15 @@ geometricCtrl::geometricCtrl(const ros::NodeHandle &nh, const ros::NodeHandle &n
 
   tau << tau_x, tau_y, tau_z;
 }
+
+
 geometricCtrl::~geometricCtrl() {
   // Destructor
 }
 
+// input is linear and angular velocities
+// Update target pose, velocity and accerleration: targetPos_, targetVel_, targetAcc_
+// previous target pose and velcocity are stored in targetPos_prev_ and targetVel_prev_
 void geometricCtrl::targetCallback(const geometry_msgs::TwistStamped &msg) {
   reference_request_last_ = reference_request_now_;
   targetPos_prev_ = targetPos_;
@@ -127,6 +173,8 @@ void geometricCtrl::targetCallback(const geometry_msgs::TwistStamped &msg) {
   reference_request_now_ = ros::Time::now();
   reference_request_dt_ = (reference_request_now_ - reference_request_last_).toSec();
 
+  // geometry_msgs to Eigen form
+  // update targe angular and linear velocity
   targetPos_ = toEigen(msg.twist.angular);
   targetVel_ = toEigen(msg.twist.linear);
 
@@ -135,6 +183,7 @@ void geometricCtrl::targetCallback(const geometry_msgs::TwistStamped &msg) {
   else
     targetAcc_ = Eigen::Vector3d::Zero();
 }
+
 
 void geometricCtrl::flattargetCallback(const controller_msgs::FlatTarget &msg) {
   reference_request_last_ = reference_request_now_;
@@ -222,6 +271,7 @@ bool geometricCtrl::landCallback(std_srvs::SetBool::Request &request, std_srvs::
   return true;
 }
 
+
 void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event) {
   switch (node_state) {
     case WAITING_FOR_HOME_POSE:
@@ -264,18 +314,29 @@ void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event) {
 
 void geometricCtrl::mavstateCallback(const mavros_msgs::State::ConstPtr &msg) { current_state_ = *msg; }
 
+/**
+ * function: cmdloopCallback()
+ * method:   use timer to call statusloopCallback at every 1s by setting ros::Duration(1)
+ * output:   in simulation: switch to offboard mode and arm drone
+ *           
+ */
 void geometricCtrl::statusloopCallback(const ros::TimerEvent &event) {
+  // 1. only in simulation
   if (sim_enable_) {
     // Enable OFFBoard mode and arm automatically
     // This will only run if the vehicle is simulated
     arm_cmd_.request.value = true;
     offb_set_mode_.request.custom_mode = "OFFBOARD";
-    if (current_state_.mode != "OFFBOARD" && (ros::Time::now() - last_request_ > ros::Duration(5.0))) {
+    // 1 .switch to offboard
+    if (current_state_.mode != "OFFBOARD" && (ros::Time::now() - last_request_ > ros::Duration(5.0))) 
+    {
       if (set_mode_client_.call(offb_set_mode_) && offb_set_mode_.response.mode_sent) {
         ROS_INFO("Offboard enabled");
       }
       last_request_ = ros::Time::now();
-    } else {
+    } //
+    // 2. arm drone
+    else {
       if (!current_state_.armed && (ros::Time::now() - last_request_ > ros::Duration(5.0))) {
         if (arming_client_.call(arm_cmd_) && arm_cmd_.response.success) {
           ROS_INFO("Vehicle armed");
@@ -284,9 +345,97 @@ void geometricCtrl::statusloopCallback(const ros::TimerEvent &event) {
       }
     }
   }
+  // 2. in experiment
+  // TODO how to arm and offboard in expriments
+  else{
+      // setOffboard(true);
+      // setArmed(true);
+  }
   pubSystemStatus();
 }
 
+// TODO setoffboard
+// void geometricCtrl::setOffboard(const bool Command)
+//   {
+//     if (takeoff_struct.auto_launch == false && Command == true)
+//     {
+//       ROS_WARN_THROTTLE(1, "Automatic OFFBOARD Denied");
+//       return;
+//     }
+//     // If set to offboard and drone is manual
+//     if (Command && !checkOffboard() && ros::Time::now().toSec() - setModeStruct.t_lastCall > 0.5)
+//     {
+//       ROS_INFO("setting offboard");
+//       setModeStruct.modeServiceMessage.request.custom_mode = "OFFBOARD";
+//       setModeStruct.set_mode_client.call(setModeStruct.modeServiceMessage);
+//       setModeStruct.t_lastCall = ros::Time::now().toSec();
+//       if (setModeStruct.modeServiceMessage.response.mode_sent)
+//       {
+//         ROS_WARN("\n !!OFFBOARD!! \n");
+//       }
+//       else
+//       {
+//         ROS_INFO("Setting OFFBOARD failed");
+//       }
+//     }
+//     else if (!Command && checkOffboard() && ros::Time::now().toSec() - setModeStruct.t_lastCall > 0.5)
+//     {
+//       ROS_WARN_THROTTLE(0.5, "setting manual");
+//       setModeStruct.modeServiceMessage.request.custom_mode = "MANUAL"; // Set to Manual and Disarmed
+//       setModeStruct.set_mode_client.call(setModeStruct.modeServiceMessage);
+//       setModeStruct.t_lastCall = ros::Time::now().toSec();
+//     }
+//     return;
+//   } // end setOffboard()
+
+  /** Command to automatically arm the drone
+  *
+  * \param Command Set bool to true to arm drone and set to false to disarm
+  *
+  */
+  // void geometricCtrl::setArmed(const bool Command)
+  // {
+  //   if (Command == true && ros::Time::now().toSec() - armingStruct.t_lastCall > 0.5)
+  //   {
+  //     if (takeoff_struct.auto_launch == false && Command == true)
+  //     {
+  //       ROS_WARN_THROTTLE(1, "Automatic Arming Denied");
+  //       return;
+  //     }
+  //     ROS_DEBUG("arming attempt");
+  //     armingStruct.arm_cmd.request.value = true;
+  //     armingStruct.t_lastCall = ros::Time::now().toSec();
+  //     armingStruct.arming_client.call(armingStruct.arm_cmd);
+  //     if (armingStruct.arm_cmd.response.success)
+  //     {
+  //       ROS_WARN("\n !!Armed!! \n");
+  //       status.armed = Command;
+  //       status.last_state_time = ros::Time::now().toSec();
+  //     }
+  //     else
+  //     {
+  //       ROS_INFO("ARMING Failed");
+  //     }
+  //   }
+  //   else if (Command == false && ros::Time::now().toSec() - armingStruct.t_lastCall > 0.5)
+  //   {
+  //     armingStruct.arm_cmd.request.value = false;
+  //     armingStruct.t_lastCall = ros::Time::now().toSec();
+  //     armingStruct.arming_client.call(armingStruct.arm_cmd);
+  //     if (armingStruct.arm_cmd.response.success)
+  //     {
+  //       ROS_WARN("\n !!Disarmed!! \n");
+  //       status.armed = Command;
+  //       status.last_state_time = ros::Time::now().toSec();
+  //     }
+  //   }
+  //   return;
+  // } // end setArmed()
+
+
+// pubReferencePose
+// input reference position and attitude 
+// output publish to reference/pose
 void geometricCtrl::pubReferencePose(const Eigen::Vector3d &target_position, const Eigen::Vector4d &target_attitude) {
   geometry_msgs::PoseStamped msg;
 
@@ -329,7 +478,9 @@ void geometricCtrl::pubPoseHistory() {
 
   posehistoryPub_.publish(msg);
 }
-
+/*
+  TO do
+*/
 void geometricCtrl::pubSystemStatus() {
   mavros_msgs::CompanionProcessStatus msg;
 
@@ -377,7 +528,7 @@ Eigen::Vector3d geometricCtrl::controlPosition(const Eigen::Vector3d &target_pos
   const Eigen::Vector3d pos_error = mavPos_ - target_pos;
   const Eigen::Vector3d vel_error = mavVel_ - target_vel;
 
-  // Position Controller
+  // Position and vel Controller
   const Eigen::Vector3d a_fb = poscontroller(pos_error, vel_error);
 
   // Rotor Drag compensation
