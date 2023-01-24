@@ -37,7 +37,11 @@ It is suggested by PX4 that pose information form mocap should be sent by an onb
 
 ### 1. configure drone sensors
 
-### 2. synch drone time
+### 2. drone synch drone time
+check the time of drone and base station
+```shell
+  date
+```
 
 ### 3. base station runs **vicon_bridge** to get VICON information published to ROS
 ```shell
@@ -57,13 +61,21 @@ ssh drone1@drone1
 ```
 Starting mavros and mocap_to_mavros by
 ```shell
-roslaucn drone_experiment_tools drone_onboard.launch
+roslaunch drone_experiment_tools drone_onboard.launch
 ```
 or
 
 ```shell
-roslaucn drone_experiment_tools drone_onboard_2.launch
+roslaunch drone_experiment_tools drone_onboard_2.launch
+```
+
+###  4.5 record
+```shell
+roslaunch drone_experiment_tools drone_ex_record
 ```
 
 ### 5. base station run mavros_controller
+```shell
+roslaunch geometric_controller ex_geometric_controller
+```
 
