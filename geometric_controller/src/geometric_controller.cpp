@@ -75,7 +75,7 @@ geometricCtrl::geometricCtrl(const ros::NodeHandle &nh, const ros::NodeHandle &n
       nh_.subscribe("mavros/state", 1, &geometricCtrl::mavstateCallback, this, ros::TransportHints().tcpNoDelay());
 
   // subscribe to drone pose  by  mavros/local_position/pose  
-  mavposeSub_ = nh_.subscribe("mavros/local_position/pose", 1, &geometricCtrl::mavposeCallback, this,
+  mavposeSub_ = nh_.subscribe("vicon/drone", 1, &geometricCtrl::mavposeCallback, this,
                               ros::TransportHints().tcpNoDelay());
 
   // subscribe to drone (linear and angular) twist  by  mavros/local_position/velocity_local  
@@ -248,7 +248,19 @@ void geometricCtrl::multiDOFJointCallback(const trajectory_msgs::MultiDOFJointTr
   }
 }
 
-void geometricCtrl::mavposeCallback(const geometry_msgs::PoseStamped &msg) {
+
+void geometricCtrl::mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon) {
+
+  geometry_msgs::PoseStamped msg;
+
+  // position
+  msg.pose.position.x = (*msg_vicon).transform.translation.x;
+  msg.pose.position.y = (*msg_vicon).transform.translation.y;
+  msg.pose.position.z = (*msg_vicon).transform.translation.z;
+  // attitude
+  msg.pose.orientation = (*msg_vicon).transform.rotation;
+
+
   if (!received_home_pose) {
     received_home_pose = true;
     home_pose_ = msg.pose;
@@ -260,6 +272,21 @@ void geometricCtrl::mavposeCallback(const geometry_msgs::PoseStamped &msg) {
   mavAtt_(2) = msg.pose.orientation.y;
   mavAtt_(3) = msg.pose.orientation.z;
 }
+
+
+
+// void geometricCtrl::mavposeCallback(const geometry_msgs::PoseStamped &msg) {
+//   if (!received_home_pose) {
+//     received_home_pose = true;
+//     home_pose_ = msg.pose;
+//     ROS_INFO_STREAM("Home pose initialized to: " << home_pose_);
+//   }
+//   mavPos_ = toEigen(msg.pose.position);
+//   mavAtt_(0) = msg.pose.orientation.w;
+//   mavAtt_(1) = msg.pose.orientation.x;
+//   mavAtt_(2) = msg.pose.orientation.y;
+//   mavAtt_(3) = msg.pose.orientation.z;
+// }
 
 void geometricCtrl::mavtwistCallback(const geometry_msgs::TwistStamped &msg) {
   mavVel_ = toEigen(msg.twist.linear);

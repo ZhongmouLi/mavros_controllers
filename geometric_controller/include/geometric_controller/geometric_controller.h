@@ -51,6 +51,7 @@
 #include <string>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <mavros_msgs/AttitudeTarget.h>
@@ -159,7 +160,8 @@ class geometricCtrl {
   void keyboardCallback(const geometry_msgs::Twist &msg);
   void cmdloopCallback(const ros::TimerEvent &event);
   void mavstateCallback(const mavros_msgs::State::ConstPtr &msg);
-  void mavposeCallback(const geometry_msgs::PoseStamped &msg);
+  //void mavposeCallback(const geometry_msgs::PoseStamped &msg);
+  void mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon);
   void mavtwistCallback(const geometry_msgs::TwistStamped &msg);
   void statusloopCallback(const ros::TimerEvent &event);
   bool ctrltriggerCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);

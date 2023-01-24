@@ -1,6 +1,14 @@
  <launch>
   <arg name="mav_name" default="iris"/>
+
+  <!-- choose controller -->
+  <!-- command_input = 2 leads to geometric_attcontroller
+       command_input = 1 leads to attcontroller.
+  -->
+       
   <arg name="command_input" default="2" />
+
+  <!-- manually arm and offboard drone -->
   <arg name="gazebo_simulation" default="false" />
 
     <node pkg="geometric_controller" type="geometric_controller_node" name="geometric_controller" output="screen">
