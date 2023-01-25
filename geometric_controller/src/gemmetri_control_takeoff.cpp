@@ -19,8 +19,8 @@ int main(int argc, char** argv) {
 
     takeoff_point.header.seq=seq;
     takeoff_point.header.frame_id="base_link";
-    takeoff_point.twist.angular.x = 0.53;
-    takeoff_point.twist.angular.y = 0.97;
+    takeoff_point.twist.angular.x = 0.58;
+    takeoff_point.twist.angular.y = 0.79;
     takeoff_point.twist.angular.z = 1;
 
     takeoff_point.twist.linear.x = 0;

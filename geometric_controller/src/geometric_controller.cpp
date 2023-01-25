@@ -572,7 +572,9 @@ Eigen::Vector3d geometricCtrl::controlPosition(const Eigen::Vector3d &target_pos
 
   // Reference acceleration
   const Eigen::Vector3d a_des = a_fb + a_ref - a_rd - g_;
-
+  ROS_INFO_STREAM("a_fb is " << a_fb.transpose());
+  ROS_INFO_STREAM("a_ref is " << a_ref.transpose());
+  ROS_INFO_STREAM("a_rd is " << a_rd.transpose());
   return a_des;
 }
 
@@ -637,7 +639,7 @@ Eigen::Vector4d geometricCtrl::attcontroller(const Eigen::Vector4d &ref_att, con
   const Eigen::Matrix3d rotmat = quat2RotMatrix(mavAtt_);
   const Eigen::Vector3d zb = rotmat.col(2);
   ratecmd(3) =
-      std::max(0.0, std::min(1.0, norm_thrust_const_ * ref_acc.dot(zb) + norm_thrust_offset_));  // Calculate thrust
+      std::max(0.0, std::min(0.8, norm_thrust_const_ * ref_acc.dot(zb) + norm_thrust_offset_));  // Calculate thrust
 
   return ratecmd;
 }
@@ -673,7 +675,7 @@ Eigen::Vector4d geometricCtrl::jerkcontroller(const Eigen::Vector3d &ref_jerk, c
   ratecmd(1) = (-1.0) * ratecmd_pre(1);
   ratecmd(2) = 0.0;
   ratecmd(3) =
-      std::max(0.0, std::min(1.0, norm_thrust_const_ * ref_acc.dot(zb) + norm_thrust_offset_));  // Calculate thrust
+      std::max(0.0, std::min(0.8, norm_thrust_const_ * ref_acc.dot(zb) + norm_thrust_offset_));  // Calculate thrust
   last_ref_acc_ = ref_acc;
   return ratecmd;
 }
@@ -698,7 +700,7 @@ Eigen::Vector4d geometricCtrl::geometric_attcontroller(const Eigen::Vector4d &re
   rotmat = quat2RotMatrix(mavAtt_);
   const Eigen::Vector3d zb = rotmat.col(2);
   ratecmd(3) =
-      std::max(0.0, std::min(1.0, norm_thrust_const_ * ref_acc.dot(zb) + norm_thrust_offset_));  // Calculate thrust
+      std::max(0.0, std::min(0.8, norm_thrust_const_ * ref_acc.dot(zb) + norm_thrust_offset_));  // Calculate thrust
 
   return ratecmd;
 }
