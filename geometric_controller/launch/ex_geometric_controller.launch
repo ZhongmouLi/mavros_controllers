@@ -16,20 +16,29 @@
             <remap from="command/bodyrate_command" to="/mavros/setpoint_raw/attitude"/>
             <param name="ctrl_mode" value="$(arg command_input)" />
             <param name="enable_sim" value="$(arg gazebo_simulation)" />
-            <param name="max_acc" value="5.0" />
+            <param name="max_acc" value="10.0" />
             <!--Params specific for Iris copter-->
             <param name="attctrl_constant" value="0.3"/>
             <param name="normalizedthrust_constant" value="0.047"/> <!-- 0.06 -->
             <param name="normalizedthrust_offset" value="0.0"/>
-            <param name="Kp_x" value="10.0" />
-            <param name="Kp_y" value="10.0" />
-            <param name="Kp_z" value="20.0" />
-            <param name="Kv_x" value="5.0"/>
-            <param name="Kv_y" value="5.0"/>
-            <param name="Kv_z" value="10.0"/>            
+            <param name="Kp_x" value="2.0" />
+            <param name="Kp_y" value="2.0" />
+            <param name="Kp_z" value="4.0" />
+            <param name="Kv_x" value="0.5"/>
+            <param name="Kv_y" value="0.5"/>
+            <param name="Kv_z" value="1"/>            
     </node>
 
+  <arg name="drone_home_x" default="iris"/>
+  <arg name="drone_home_y" default="iris"/>
+  <arg name="drone_home_z" default="iris"/>
+  <arg name="drone_takeoff_height" default="0.5"/>
+
   <node pkg="geometric_controller" type="geometric_controller_takeoff_node" name="geometric_takeoff" output="screen">
+      <param name="home_x" value="$(arg drone_home_x)" />
+      <param name="home_y" value="$(arg drone_home_y)" />
+      <param name="home_z" value="$(arg drone_home_z)" />
+      <param name="take_off_height" value="$(arg drone_takeoff_height)" />
   </node>  
 
   </launch>
