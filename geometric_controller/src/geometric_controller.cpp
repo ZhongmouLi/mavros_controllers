@@ -149,8 +149,15 @@ geometricCtrl::geometricCtrl(const ros::NodeHandle &nh, const ros::NodeHandle &n
   g_ << 0.0, 0.0, -9.8;
 
 
+
   Kpos_ << -Kpos_x_, -Kpos_y_, -Kpos_z_;
   Kvel_ << -Kvel_x_, -Kvel_y_, -Kvel_z_;
+  
+
+  // Added I controller
+  nh_private_.param<double>("KposI_z", KposI_z_, 0.1);
+  
+  KposI_<< 0,0,-KposI_z_;
 
   D_ << dx_, dy_, dz_;
 
@@ -599,8 +606,24 @@ void geometricCtrl::computeBodyRateCmd(Eigen::Vector4d &bodyrate_cmd, const Eige
 }
 
 Eigen::Vector3d geometricCtrl::poscontroller(const Eigen::Vector3d &pos_error, const Eigen::Vector3d &vel_error) {
+  // Added I controller
+  poscontrol_last_ = poscontrol_now_;
+  poscontrol_now_ = ros::Time::now();
+  
+  poscontrol_dt = (poscontrol_now_ - poscontrol_last_).toSec();
+  error_pose_I = error_pose_I + poscontrol_dt * pos_error;
+  // 
+
+  // Eigen::Vector3d a_fb =
+  //     Kpos_.asDiagonal() * pos_error + Kvel_.asDiagonal() * vel_error;  // feedforward term for trajectory error
+
+  // Added I controller
   Eigen::Vector3d a_fb =
-      Kpos_.asDiagonal() * pos_error + Kvel_.asDiagonal() * vel_error;  // feedforward term for trajectory error
+      Kpos_.asDiagonal() * pos_error + Kvel_.asDiagonal() * vel_error + KposI_.asDiagonal()* error_pose_I;  // feedforward term for trajectory error
+
+  ROS_INFO_STREAM("poseI error is " << error_pose_I.transpose());
+  ROS_INFO_STREAM("poseI control effort is " << KposI_.asDiagonal()* error_pose_I);
+
   ROS_INFO_STREAM("pose error is " << pos_error.transpose());
 
   Eigen::Vector3d coneffort_pose = Kpos_.asDiagonal() * pos_error;
