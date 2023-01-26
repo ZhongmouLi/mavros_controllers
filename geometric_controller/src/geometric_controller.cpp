@@ -580,8 +580,8 @@ Eigen::Vector3d geometricCtrl::controlPosition(const Eigen::Vector3d &target_pos
   // Reference acceleration
   //const Eigen::Vector3d a_des = a_fb + a_ref - a_rd - g_;
    const Eigen::Vector3d a_des = a_fb - g_;
-  ROS_INFO_STREAM("a_fb is " << a_fb.transpose());
-  ROS_INFO_STREAM("a_des is " << a_des.transpose());
+  ROS_DEBUG_STREAM("a_fb is " << a_fb.transpose());
+  ROS_DEBUG_STREAM("a_des is " << a_des.transpose());
   // ROS_INFO_STREAM("a_ref is " << a_ref.transpose());
   // ROS_INFO_STREAM("a_rd is " << a_rd.transpose());
   return a_des;
@@ -621,18 +621,18 @@ Eigen::Vector3d geometricCtrl::poscontroller(const Eigen::Vector3d &pos_error, c
   Eigen::Vector3d a_fb =
       Kpos_.asDiagonal() * pos_error + Kvel_.asDiagonal() * vel_error + KposI_.asDiagonal()* error_pose_I;  // feedforward term for trajectory error
 
-  ROS_INFO_STREAM("poseI error is " << error_pose_I.transpose());
-  ROS_INFO_STREAM("poseI control effort is " << KposI_.asDiagonal()* error_pose_I);
+  ROS_DEBUG_STREAM("poseI error is " << error_pose_I.transpose());
+  ROS_DEBUG_STREAM("poseI control effort is " << KposI_.asDiagonal()* error_pose_I);
 
-  ROS_INFO_STREAM("pose error is " << pos_error.transpose());
+  ROS_DEBUG_STREAM("pose error is " << pos_error.transpose());
 
   Eigen::Vector3d coneffort_pose = Kpos_.asDiagonal() * pos_error;
-  ROS_INFO_STREAM("pose control effort is " << coneffort_pose.transpose());
-  ROS_INFO_STREAM("vel error is " << vel_error.transpose());
+  ROS_DEBUG_STREAM("pose control effort is " << coneffort_pose.transpose());
+  ROS_DEBUG_STREAM("vel error is " << vel_error.transpose());
 
   Eigen::Vector3d coneffort_vel = Kvel_.asDiagonal() * vel_error;
 
-  ROS_INFO_STREAM("vel control effort is " << coneffort_vel.transpose());
+  ROS_DEBUG_STREAM("vel control effort is " << coneffort_vel.transpose());
   if (a_fb.norm() > max_fb_acc_)
     a_fb = (max_fb_acc_ / a_fb.norm()) * a_fb;  // Clip acceleration if reference is too large
 
@@ -735,10 +735,10 @@ Eigen::Vector4d geometricCtrl::geometric_attcontroller(const Eigen::Vector4d &re
   ratecmd(3) =
       std::max(0.0, std::min(0.8, norm_thrust_const_ * ref_acc.dot(zb) + norm_thrust_offset_));  // Calculate thrust
   
-  ROS_INFO_STREAM("ref_acc is " << ref_acc.transpose());
-  ROS_INFO_STREAM("zb is " << zb.transpose());
-  ROS_INFO_STREAM("ref_acc dot zb is " << ref_acc.dot(zb));
-  ROS_INFO_STREAM("thurst is " << ratecmd(3));
+  ROS_DEBUG_STREAM("ref_acc is " << ref_acc.transpose());
+  ROS_DEBUG_STREAM("zb is " << zb.transpose());
+  ROS_DEBUG_STREAM("ref_acc dot zb is " << ref_acc.dot(zb));
+  ROS_DEBUG_STREAM("thurst is " << ratecmd(3));
 
   return ratecmd;
 }
