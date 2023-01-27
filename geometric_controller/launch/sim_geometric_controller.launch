@@ -24,7 +24,7 @@
             <param name="Kp_x" value="2.0" />
             <param name="Kp_y" value="2.0" />
             <param name="Kp_z" value="36" />
-            <param name="KposI_z" value="0.01" />
+            <param name="KposI_z" value="0.02" />
             <param name="Kv_x" value="0.5"/>
             <param name="Kv_y" value="0.5"/>
             <param name="Kv_z" value="12"/>        

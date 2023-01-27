@@ -579,7 +579,7 @@ Eigen::Vector3d geometricCtrl::controlPosition(const Eigen::Vector3d &target_pos
 
   // Reference acceleration
   //const Eigen::Vector3d a_des = a_fb + a_ref - a_rd - g_;
-   const Eigen::Vector3d a_des = a_fb - g_;
+   const Eigen::Vector3d a_des = a_fb + a_ref - g_;
   ROS_DEBUG_STREAM("a_fb is " << a_fb.transpose());
   ROS_DEBUG_STREAM("a_des is " << a_des.transpose());
   // ROS_INFO_STREAM("a_ref is " << a_ref.transpose());
