@@ -1,5 +1,27 @@
 # geometric_controller
 
+## History 
+
+### v1.0
+A reference trajectory with posisiton and velocity can be tracked by geometirc_controller.
+
+Tracking performance
+
+<figure>
+    <img src="img/v1_0_result.png"
+         alt="drawing" style="width:700px;"/>
+    <figcaption> Tracking of a takeoff trajectory </figcaption>
+</figure>
+
+ROS schematic
+<figure>
+    <img src="img/v1_0.png"
+         alt="drawing" style="width:800px;"/>
+    <figcaption> ROS schematic functions and topics in node</figcaption>
+</figure>
+
+
+### Intro of Mavros_controller
 Trajectory trackking controller using [mavros](https://github.com/mavlink/mavros) package in PX4 OFFBOARD mode. This is a implementation of a geometric controller and differentially flat system considering rotor drag
 
 ## Overview
