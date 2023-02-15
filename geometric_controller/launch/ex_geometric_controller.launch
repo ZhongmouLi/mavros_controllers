@@ -23,18 +23,19 @@
             <param name="normalizedthrust_offset" value="0.0"/>
             <param name="Kp_x" value="2.0" />
             <param name="Kp_y" value="2.0" />
-            <param name="Kp_z" value="4.0" />
+            <param name="Kp_z" value="16.0" />
             <param name="Kv_x" value="0.5"/>
             <param name="Kv_y" value="0.5"/>
-            <param name="Kv_z" value="1"/>            
+            <param name="Kv_z" value="8"/>  
+            <param name="KposI_z" value="0.02" />          
     </node>
 
-  <arg name="drone_home_x" default="iris"/>
-  <arg name="drone_home_y" default="iris"/>
-  <arg name="drone_home_z" default="iris"/>
-  <arg name="drone_takeoff_height" default="0.5"/>
+  <arg name="drone_home_x" default="0"/>
+  <arg name="drone_home_y" default="0"/>
+  <arg name="drone_home_z" default="0"/>
+  <arg name="drone_takeoff_height" default="1"/>
 
-  <node pkg="geometric_controller" type="geometric_controller_takeoff_node" name="geometric_takeoff" output="screen">
+  <node pkg="geometric_controller" type="geometric_controller_takeoff_node_trajectory" name="geometric_takeoff" output="screen">
       <param name="home_x" value="$(arg drone_home_x)" />
       <param name="home_y" value="$(arg drone_home_y)" />
       <param name="home_z" value="$(arg drone_home_z)" />
