@@ -315,11 +315,10 @@ void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event) {
   switch (node_state) {
     case WAITING_FOR_HOME_POSE:
       waitForPredicate(&received_home_pose, "Waiting for home pose...");
-      ROS_INFO_THROTTLE(2,"Fuck 1");
 
       // computeBodyRateCmd(cmdBodyRate_, -g_);
       // pubRateCommands(cmdBodyRate_, q_des);
-      ROS_INFO_STREAM_THROTTLE(2, "home_position is "<< home_position_);
+      // ROS_INFO_STREAM_THROTTLE(2, "home_position is "<< home_position_);
       desired_acc = controlPosition(home_position_, Eigen::MatrixXd::Zero(3, 1), Eigen::MatrixXd::Zero(3, 1));
       computeBodyRateCmd(cmdBodyRate_, desired_acc);
       pubRateCommands(cmdBodyRate_, q_des);
@@ -342,7 +341,7 @@ void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event) {
       pubRateCommands(cmdBodyRate_, q_des);
       appendPoseHistory();
       pubPoseHistory();
-      ROS_INFO("Fuck 2");
+      ROS_INFO_STREAM_THROTTLE(3, "drone in execution");
       break;
     }
 

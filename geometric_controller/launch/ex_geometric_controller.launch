@@ -30,9 +30,9 @@
             <param name="KposI_z" value="0.02" />          
     </node>
 
-  <arg name="drone_home_x" default="0.0"/>
-  <arg name="drone_home_y" default="0.0"/>
-  <arg name="drone_home_z" default="0.0"/>
+  <arg name="drone_home_x" default="0"/>
+  <arg name="drone_home_y" default="0"/>
+  <arg name="drone_home_z" default="1"/>
   <arg name="drone_takeoff_height" default="1"/>
   <arg name="take_off_time" default="4"/>
 
