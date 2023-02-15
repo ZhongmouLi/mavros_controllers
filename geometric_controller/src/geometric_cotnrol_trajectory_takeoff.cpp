@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
         ros::spinOnce();
         loop_rate.sleep();
         // ROS_INFO_STREAM_THROTTLE(5, "takeoff to x: " << takeoff_point.twist.angular.x << " y: "<<takeoff_point.twist.angular.y << " z: "<<takeoff_point.twist.angular.z);
-        ROS_INFO_STREAM_THROTTLE(5, "takeoff to x: " << q_destination(0) << " y: "<<q_destination(1) << " z: "<<q_destination(2));
+        ROS_INFO_STREAM_THROTTLE(0.5, "takeoff to x: " << takeoff_point.twist.angular.x << " y: "<<takeoff_point.twist.angular.y << " z: "<<takeoff_point.twist.angular.z);
     }
     
     

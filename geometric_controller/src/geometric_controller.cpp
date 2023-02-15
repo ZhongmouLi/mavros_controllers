@@ -272,6 +272,9 @@ void geometricCtrl::mavposeCallback(const geometry_msgs::TransformStamped::Const
     received_home_pose = true;
     home_pose_ = msg.pose;
     ROS_INFO_STREAM("Home pose initialized to: " << home_pose_);
+
+    // Add
+    home_position_ = toEigen(home_pose_.position);
   }
   mavPos_ = toEigen(msg.pose.position);
   mavAtt_(0) = msg.pose.orientation.w;
@@ -307,15 +310,28 @@ bool geometricCtrl::landCallback(std_srvs::SetBool::Request &request, std_srvs::
 
 
 void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event) {
+  Eigen::Vector3d desired_acc;
+
   switch (node_state) {
     case WAITING_FOR_HOME_POSE:
       waitForPredicate(&received_home_pose, "Waiting for home pose...");
-      ROS_INFO("Got pose! Drone Ready to be armed.");
-      node_state = MISSION_EXECUTION;
+      ROS_INFO_THROTTLE(2,"Fuck 1");
+
+      // computeBodyRateCmd(cmdBodyRate_, -g_);
+      // pubRateCommands(cmdBodyRate_, q_des);
+      ROS_INFO_STREAM_THROTTLE(2, "home_position is "<< home_position_);
+      desired_acc = controlPosition(home_position_, Eigen::MatrixXd::Zero(3, 1), Eigen::MatrixXd::Zero(3, 1));
+      computeBodyRateCmd(cmdBodyRate_, desired_acc);
+      pubRateCommands(cmdBodyRate_, q_des);
+
+      if( (current_state_.mode == "OFFBOARD") && current_state_.armed)
+      {
+        node_state = MISSION_EXECUTION;
+      }
       break;
 
     case MISSION_EXECUTION: {
-      Eigen::Vector3d desired_acc;
+      
       if (feedthrough_enable_) {
         desired_acc = targetAcc_;
       } else {
@@ -326,6 +342,7 @@ void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event) {
       pubRateCommands(cmdBodyRate_, q_des);
       appendPoseHistory();
       pubPoseHistory();
+      ROS_INFO("Fuck 2");
       break;
     }
 
@@ -423,7 +440,7 @@ void geometricCtrl::statusloopCallback(const ros::TimerEvent &event) {
 //     }
 //     else if (!Command && checkOffboard() && ros::Time::now().toSec() - setModeStruct.t_lastCall > 0.5)
 //     {
-//       ROS_WARN_THROTTLE(0.5, "setting manual");
+//       ROS_WARN_THROTTLE(0.5, "setting manual"g_);
 //       setModeStruct.modeServiceMessage.request.custom_mode = "MANUAL"; // Set to Manual and Disarmed
 //       setModeStruct.set_mode_client.call(setModeStruct.modeServiceMessage);
 //       setModeStruct.t_lastCall = ros::Time::now().toSec();

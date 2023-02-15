@@ -140,6 +140,10 @@ class geometricCtrl {
   MAV_STATE companion_state_ = MAV_STATE::MAV_STATE_ACTIVE;
 
   double initTargetPos_x_, initTargetPos_y_, initTargetPos_z_;
+  // Add
+  Eigen::Vector3d home_position_;
+
+  //
   Eigen::Vector3d targetPos_, targetVel_, targetAcc_, targetJerk_, targetSnap_, targetPos_prev_, targetVel_prev_;
   Eigen::Vector3d mavPos_, mavVel_, mavRate_;
   Eigen::Vector3d last_ref_acc_{Eigen::Vector3d::Zero()};
@@ -190,7 +194,6 @@ class geometricCtrl {
   template <class T>
   void waitForPredicate(const T *pred, const std::string &msg, double hz = 2.0) {
     ros::Rate pause(hz);
-    ROS_INFO_STREAM(msg);
     while (ros::ok() && !(*pred)) {
       ros::spinOnce();
       pause.sleep();
