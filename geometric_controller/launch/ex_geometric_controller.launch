@@ -13,7 +13,7 @@
 
     <node pkg="geometric_controller" type="geometric_controller_node" name="geometric_controller" output="screen">
         <param name="mav_name" type="string" value="$(arg mav_name)" />
-            <remap from="command/bodyrate_command" to="/mavros/setpoint_raw/attitude"/>
+            <remap from="command/bodyrate_command" to="mavros/setpoint_raw/attitude"/>
             <param name="ctrl_mode" value="$(arg command_input)" />
             <param name="enable_sim" value="$(arg gazebo_simulation)" />
             <param name="max_acc" value="10.0" />
@@ -23,16 +23,16 @@
             <param name="normalizedthrust_offset" value="0.0"/>
             <param name="Kp_x" value="2.0" />
             <param name="Kp_y" value="2.0" />
-            <param name="Kp_z" value="16.0" />
+            <param name="Kp_z" value="9.0" />
             <param name="Kv_x" value="0.5"/>
             <param name="Kv_y" value="0.5"/>
-            <param name="Kv_z" value="8"/>  
+            <param name="Kv_z" value="6"/>  
             <param name="KposI_z" value="0.02" />          
     </node>
 
-  <arg name="drone_home_x" default="0"/>
-  <arg name="drone_home_y" default="0"/>
-  <arg name="drone_home_z" default="0"/>
+  <arg name="drone_home_x" default="0.047"/>
+  <arg name="drone_home_y" default="0.095"/>
+  <arg name="drone_home_z" default="0.29"/>
   <arg name="drone_takeoff_height" default="1"/>
 
   <node pkg="geometric_controller" type="geometric_controller_takeoff_node_trajectory" name="geometric_takeoff" output="screen">

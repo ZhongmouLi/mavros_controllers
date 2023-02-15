@@ -383,14 +383,14 @@ void geometricCtrl::statusloopCallback(const ros::TimerEvent &event) {
   // TODO how to arm and offboard in expriments
   else{
 
-      if(!current_state_.armed)
-      {
-        ROS_INFO("Waiting to be armed");
-      }
-      if(current_state_.mode != "OFFBOARD")
-      {
-        ROS_INFO("Waiting to be OFFBOARD");
-      }
+      // if(!current_state_.armed)
+      // {
+      //   ROS_INFO("Waiting to be armed");
+      // }
+      // if(current_state_.mode != "OFFBOARD")
+      // {
+      //   ROS_INFO("Waiting to be OFFBOARD");
+      // }
       // setOffboard(true);
       // setArmed(true);
   }
