@@ -518,7 +518,8 @@ void geometricCtrl::pubRateCommands(const Eigen::Vector4d &cmd, const Eigen::Vec
   msg.body_rate.x = cmd(0);
   msg.body_rate.y = cmd(1);
   msg.body_rate.z = cmd(2);
-  msg.type_mask = 128;  // Ignore orientation messages
+  // msg.type_mask = 128;  // Ignore orientation messages
+  msg.type_mask = msg.IGNORE_PITCH_RATE + msg.IGNORE_ROLL_RATE + msg.IGNORE_YAW_RATE;
   msg.orientation.w = target_attitude(0);
   msg.orientation.x = target_attitude(1);
   msg.orientation.y = target_attitude(2);

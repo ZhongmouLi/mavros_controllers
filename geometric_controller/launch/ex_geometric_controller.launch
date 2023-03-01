@@ -6,7 +6,7 @@
        command_input = 1 leads to attcontroller.
   -->
        
-  <arg name="command_input" default="2" />
+  <arg name="command_input" default="1" />
 
   <!-- manually arm and offboard drone -->
   <arg name="gazebo_simulation" default="false" />
@@ -19,15 +19,15 @@
             <param name="max_acc" value="10.0" />
             <!--Params specific for Iris copter-->
             <param name="attctrl_constant" value="0.3"/>
-            <param name="normalizedthrust_constant" value="0.047"/> <!-- 0.06 -->
+            <param name="normalizedthrust_constant" value="0.045"/> <!-- 0.047 -->
             <param name="normalizedthrust_offset" value="0.0"/>
-            <param name="Kp_x" value="2.0" />
-            <param name="Kp_y" value="2.0" />
-            <param name="Kp_z" value="4.0" />
-            <param name="Kv_x" value="0.5"/>
-            <param name="Kv_y" value="0.5"/>
-            <param name="Kv_z" value="4"/>  
-            <param name="KposI_z" value="0.02" />          
+            <param name="Kp_x" value="9" />
+            <param name="Kp_y" value="9" />
+            <param name="Kp_z" value="16" />
+            <param name="Kv_x" value="4"/>
+            <param name="Kv_y" value="4"/>
+            <param name="Kv_z" value="8"/>  
+            <param name="KposI_z" value="0.0" />          
     </node>
 
   <arg name="drone_home_x" default="0"/>
