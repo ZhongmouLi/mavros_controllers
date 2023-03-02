@@ -60,15 +60,9 @@ geometricCtrl::geometricCtrl(const ros::NodeHandle &nh, const ros::NodeHandle &n
   referenceSub_ =
       nh_.subscribe("reference/setpoint", 1, &geometricCtrl::targetCallback, this, ros::TransportHints().tcpNoDelay());
 
-  // topic flatsetpoint corresponds to user-defined message 
-  flatreferenceSub_ = nh_.subscribe("reference/flatsetpoint", 1, &geometricCtrl::flattargetCallback, this,
-                                    ros::TransportHints().tcpNoDelay());
-
   // subscribed to yaw angle reference                                  
   yawreferenceSub_ =
       nh_.subscribe("reference/yaw", 1, &geometricCtrl::yawtargetCallback, this, ros::TransportHints().tcpNoDelay());
-  multiDOFJointSub_ = nh_.subscribe("command/trajectory", 1, &geometricCtrl::multiDOFJointCallback, this,  
-                                    ros::TransportHints().tcpNoDelay());
 
   // subscribe to drone state by mavros/state                                  
   mavstateSub_ =
@@ -192,68 +186,11 @@ void geometricCtrl::targetCallback(const geometry_msgs::TwistStamped &msg) {
 }
 
 
-void geometricCtrl::flattargetCallback(const controller_msgs::FlatTarget &msg) {
-  reference_request_last_ = reference_request_now_;
-
-  targetPos_prev_ = targetPos_;
-  targetVel_prev_ = targetVel_;
-
-  reference_request_now_ = ros::Time::now();
-  reference_request_dt_ = (reference_request_now_ - reference_request_last_).toSec();
-
-  targetPos_ = toEigen(msg.position);
-  targetVel_ = toEigen(msg.velocity);
-
-  if (msg.type_mask == 1) {
-    targetAcc_ = toEigen(msg.acceleration);
-    targetJerk_ = toEigen(msg.jerk);
-    targetSnap_ = Eigen::Vector3d::Zero();
-
-  } else if (msg.type_mask == 2) {
-    targetAcc_ = toEigen(msg.acceleration);
-    targetJerk_ = Eigen::Vector3d::Zero();
-    targetSnap_ = Eigen::Vector3d::Zero();
-
-  } else if (msg.type_mask == 4) {
-    targetAcc_ = Eigen::Vector3d::Zero();
-    targetJerk_ = Eigen::Vector3d::Zero();
-    targetSnap_ = Eigen::Vector3d::Zero();
-
-  } else {
-    targetAcc_ = toEigen(msg.acceleration);
-    targetJerk_ = toEigen(msg.jerk);
-    targetSnap_ = toEigen(msg.snap);
-  }
-}
 
 void geometricCtrl::yawtargetCallback(const std_msgs::Float32 &msg) {
   if (!velocity_yaw_) mavYaw_ = double(msg.data);
 }
 
-void geometricCtrl::multiDOFJointCallback(const trajectory_msgs::MultiDOFJointTrajectory &msg) {
-  trajectory_msgs::MultiDOFJointTrajectoryPoint pt = msg.points[0];
-  reference_request_last_ = reference_request_now_;
-
-  targetPos_prev_ = targetPos_;
-  targetVel_prev_ = targetVel_;
-
-  reference_request_now_ = ros::Time::now();
-  reference_request_dt_ = (reference_request_now_ - reference_request_last_).toSec();
-
-  targetPos_ << pt.transforms[0].translation.x, pt.transforms[0].translation.y, pt.transforms[0].translation.z;
-  targetVel_ << pt.velocities[0].linear.x, pt.velocities[0].linear.y, pt.velocities[0].linear.z;
-
-  targetAcc_ << pt.accelerations[0].linear.x, pt.accelerations[0].linear.y, pt.accelerations[0].linear.z;
-  targetJerk_ = Eigen::Vector3d::Zero();
-  targetSnap_ = Eigen::Vector3d::Zero();
-
-  if (!velocity_yaw_) {
-    Eigen::Quaterniond q(pt.transforms[0].rotation.w, pt.transforms[0].rotation.x, pt.transforms[0].rotation.y,
-                         pt.transforms[0].rotation.z);
-    Eigen::Vector3d rpy = Eigen::Matrix3d(q).eulerAngles(0, 1, 2);  // RPY
-    mavYaw_ = rpy(2);
-  }
-}
 
 
 void geometricCtrl::mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon) {
@@ -284,20 +221,6 @@ void geometricCtrl::mavposeCallback(const geometry_msgs::TransformStamped::Const
 }
 
 
-
-// void geometricCtrl::mavposeCallback(const geometry_msgs::PoseStamped &msg) {
-//   if (!received_home_pose) {
-//     received_home_pose = true;
-//     home_pose_ = msg.pose;
-//     ROS_INFO_STREAM("Home pose initialized to: " << home_pose_);
-//   }
-//   mavPos_ = toEigen(msg.pose.position);
-//   mavAtt_(0) = msg.pose.orientation.w;
-//   mavAtt_(1) = msg.pose.orientation.x;
-//   mavAtt_(2) = msg.pose.orientation.y;
-//   mavAtt_(3) = msg.pose.orientation.z;
-// }
-
 void geometricCtrl::mavtwistCallback(const geometry_msgs::TwistStamped &msg) {
   mavVel_ = toEigen(msg.twist.linear);
   mavRate_ = toEigen(msg.twist.angular);
@@ -316,8 +239,6 @@ void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event) {
     case WAITING_FOR_HOME_POSE:
       waitForPredicate(&received_home_pose, "Waiting for home pose...");
 
-      // computeBodyRateCmd(cmdBodyRate_, -g_);
-      // pubRateCommands(cmdBodyRate_, q_des);
       // ROS_INFO_STREAM_THROTTLE(2, "home_position is "<< home_position_);
       desired_acc = controlPosition(home_position_, Eigen::MatrixXd::Zero(3, 1), Eigen::MatrixXd::Zero(3, 1));
       computeBodyRateCmd(cmdBodyRate_, desired_acc);
@@ -396,100 +317,13 @@ void geometricCtrl::statusloopCallback(const ros::TimerEvent &event) {
     }
   }
   // 2. in experiment
-  // TODO how to arm and offboard in expriments
   else{
 
-      // if(!current_state_.armed)
-      // {
-      //   ROS_INFO("Waiting to be armed");
-      // }
-      // if(current_state_.mode != "OFFBOARD")
-      // {
-      //   ROS_INFO("Waiting to be OFFBOARD");
-      // }
-      // setOffboard(true);
-      // setArmed(true);
   }
   pubSystemStatus();
 }
 
-// TODO setoffboard
-// void geometricCtrl::setOffboard(const bool Command)
-//   {
-//     if (takeoff_struct.auto_launch == false && Command == true)
-//     {
-//       ROS_WARN_THROTTLE(1, "Automatic OFFBOARD Denied");
-//       return;
-//     }
-//     // If set to offboard and drone is manual
-//     if (Command && !checkOffboard() && ros::Time::now().toSec() - setModeStruct.t_lastCall > 0.5)
-//     {
-//       ROS_INFO("setting offboard");
-//       setModeStruct.modeServiceMessage.request.custom_mode = "OFFBOARD";
-//       setModeStruct.set_mode_client.call(setModeStruct.modeServiceMessage);
-//       setModeStruct.t_lastCall = ros::Time::now().toSec();
-//       if (setModeStruct.modeServiceMessage.response.mode_sent)
-//       {
-//         ROS_WARN("\n !!OFFBOARD!! \n");
-//       }
-//       else
-//       {
-//         ROS_INFO("Setting OFFBOARD failed");
-//       }
-//     }
-//     else if (!Command && checkOffboard() && ros::Time::now().toSec() - setModeStruct.t_lastCall > 0.5)
-//     {
-//       ROS_WARN_THROTTLE(0.5, "setting manual"g_);
-//       setModeStruct.modeServiceMessage.request.custom_mode = "MANUAL"; // Set to Manual and Disarmed
-//       setModeStruct.set_mode_client.call(setModeStruct.modeServiceMessage);
-//       setModeStruct.t_lastCall = ros::Time::now().toSec();
-//     }
-//     return;
-//   } // end setOffboard()
 
-  /** Command to automatically arm the drone
-  *
-  * \param Command Set bool to true to arm drone and set to false to disarm
-  *
-  */
-  // void geometricCtrl::setArmed(const bool Command)
-  // {
-  //   if (Command == true && ros::Time::now().toSec() - armingStruct.t_lastCall > 0.5)
-  //   {
-  //     if (takeoff_struct.auto_launch == false && Command == true)
-  //     {
-  //       ROS_WARN_THROTTLE(1, "Automatic Arming Denied");
-  //       return;
-  //     }
-  //     ROS_DEBUG("arming attempt");
-  //     armingStruct.arm_cmd.request.value = true;
-  //     armingStruct.t_lastCall = ros::Time::now().toSec();
-  //     armingStruct.arming_client.call(armingStruct.arm_cmd);
-  //     if (armingStruct.arm_cmd.response.success)
-  //     {
-  //       ROS_WARN("\n !!Armed!! \n");
-  //       status.armed = Command;
-  //       status.last_state_time = ros::Time::now().toSec();
-  //     }
-  //     else
-  //     {
-  //       ROS_INFO("ARMING Failed");
-  //     }
-  //   }
-  //   else if (Command == false && ros::Time::now().toSec() - armingStruct.t_lastCall > 0.5)
-  //   {
-  //     armingStruct.arm_cmd.request.value = false;
-  //     armingStruct.t_lastCall = ros::Time::now().toSec();
-  //     armingStruct.arming_client.call(armingStruct.arm_cmd);
-  //     if (armingStruct.arm_cmd.response.success)
-  //     {
-  //       ROS_WARN("\n !!Disarmed!! \n");
-  //       status.armed = Command;
-  //       status.last_state_time = ros::Time::now().toSec();
-  //     }
-  //   }
-  //   return;
-  // } // end setArmed()
 
 
 // pubReferencePose
@@ -596,7 +430,7 @@ Eigen::Vector3d geometricCtrl::controlPosition(const Eigen::Vector3d &target_pos
 
   // Reference acceleration
   //const Eigen::Vector3d a_des = a_fb + a_ref - a_rd - g_;
-   const Eigen::Vector3d a_des = a_fb + a_ref - g_;
+  const Eigen::Vector3d a_des = a_fb + a_ref - g_;
   ROS_DEBUG_STREAM("a_fb is " << a_fb.transpose());
   ROS_DEBUG_STREAM("a_des is " << a_des.transpose());
   // ROS_INFO_STREAM("a_ref is " << a_ref.transpose());
@@ -609,17 +443,12 @@ void geometricCtrl::computeBodyRateCmd(Eigen::Vector4d &bodyrate_cmd, const Eige
   q_des = acc2quaternion(a_des, mavYaw_);
 
   // Choose which kind of attitude controller you are running
-  bool jerk_enabled = false;
-  if (!jerk_enabled) {
     if (ctrl_mode_ == ERROR_GEOMETRIC) {
       bodyrate_cmd = geometric_attcontroller(q_des, a_des, mavAtt_);  // Calculate BodyRate
 
     } else {
       bodyrate_cmd = attcontroller(q_des, a_des, mavAtt_);  // Calculate BodyRate
     }
-  } else {
-    bodyrate_cmd = jerkcontroller(targetJerk_, a_des, q_des, mavAtt_);
-  }
 }
 
 Eigen::Vector3d geometricCtrl::poscontroller(const Eigen::Vector3d &pos_error, const Eigen::Vector3d &vel_error) {
@@ -694,41 +523,6 @@ Eigen::Vector4d geometricCtrl::attcontroller(const Eigen::Vector4d &ref_att, con
   return ratecmd;
 }
 
-Eigen::Vector4d geometricCtrl::jerkcontroller(const Eigen::Vector3d &ref_jerk, const Eigen::Vector3d &ref_acc,
-                                              Eigen::Vector4d &ref_att, Eigen::Vector4d &curr_att) {
-  // Jerk feedforward control
-  // Based on: Lopez, Brett Thomas. Low-latency trajectory planning for high-speed navigation in unknown environments.
-  // Diss. Massachusetts Institute of Technology, 2016.
-  // Feedforward control from Lopez(2016)
-
-  double dt_ = 0.01;
-  // Numerical differentiation to calculate jerk_fb
-  const Eigen::Vector3d jerk_fb = (ref_acc - last_ref_acc_) / dt_;
-  const Eigen::Vector3d jerk_des = ref_jerk + jerk_fb;
-  const Eigen::Matrix3d R = quat2RotMatrix(curr_att);
-  const Eigen::Vector3d zb = R.col(2);
-
-  const Eigen::Vector3d jerk_vector =
-      jerk_des / ref_acc.norm() - ref_acc * ref_acc.dot(jerk_des) / std::pow(ref_acc.norm(), 3);
-  const Eigen::Vector4d jerk_vector4d(0.0, jerk_vector(0), jerk_vector(1), jerk_vector(2));
-
-  Eigen::Vector4d inverse(1.0, -1.0, -1.0, -1.0);
-  const Eigen::Vector4d q_inv = inverse.asDiagonal() * curr_att;
-  const Eigen::Vector4d qd = quatMultiplication(q_inv, ref_att);
-
-  const Eigen::Vector4d qd_star(qd(0), -qd(1), -qd(2), -qd(3));
-
-  const Eigen::Vector4d ratecmd_pre = quatMultiplication(quatMultiplication(qd_star, jerk_vector4d), qd);
-
-  Eigen::Vector4d ratecmd;
-  ratecmd(0) = ratecmd_pre(2);  // TODO: Are the coordinate systems consistent?
-  ratecmd(1) = (-1.0) * ratecmd_pre(1);
-  ratecmd(2) = 0.0;
-  ratecmd(3) =
-      std::max(0.0, std::min(0.8, norm_thrust_const_ * ref_acc.dot(zb) + norm_thrust_offset_));  // Calculate thrust
-  last_ref_acc_ = ref_acc;
-  return ratecmd;
-}
 
 Eigen::Vector4d geometricCtrl::geometric_attcontroller(const Eigen::Vector4d &ref_att, const Eigen::Vector3d &ref_acc,
                                                        Eigen::Vector4d &curr_att) {
