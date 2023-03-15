@@ -116,7 +116,7 @@ class geometricCtrl {
   double poscontrol_dt;
   Eigen::Vector3d KposI_;
   Eigen::Vector3d error_pose_I;
-  double KposI_z_;
+  double KposI_z_, KposI_x_, KposI_y_;
 
   string mav_name_;
   bool fail_detec_, ctrl_enable_, feedthrough_enable_;

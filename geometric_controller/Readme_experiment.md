@@ -69,12 +69,12 @@ or
 roslaunch drone_experiment_tools drone_onboard_2.launch
 ```
 
-###  4.5 record
+### 5 record
 ```shell
 roslaunch drone_experiment_tools drone_ex_record
 ```
 
-### 5. base station run mavros_controller
+### 6. base station run mavros_controller
 ```shell
 roslaunch geometric_controller ex_geometric_controller
 ```

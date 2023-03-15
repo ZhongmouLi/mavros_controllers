@@ -27,7 +27,9 @@
             <param name="Kv_x" value="4"/>
             <param name="Kv_y" value="4"/>
             <param name="Kv_z" value="8"/>  
-            <param name="KposI_z" value="0.0" />          
+            <param name="KposI_x" value="0.5" /> 
+            <param name="KposI_y" value="0.5" /> 
+            <param name="KposI_z" value="0.5" />          
     </node>
 
   <arg name="drone_home_x" default="0"/>

@@ -150,12 +150,17 @@ geometricCtrl::geometricCtrl(const ros::NodeHandle &nh, const ros::NodeHandle &n
 
   // Added I controller
   nh_private_.param<double>("KposI_z", KposI_z_, 0.1);
+  nh_private_.param<double>("KposI_x", KposI_x_, 0.1);
+  nh_private_.param<double>("KposI_y", KposI_y_, 0.1);
   
-  KposI_<< 0,0,-KposI_z_;
+  KposI_<< -KposI_x_, -KposI_y_,-KposI_z_;
 
   D_ << dx_, dy_, dz_;
 
   tau << tau_x, tau_y, tau_z;
+
+  // set error_pose_I to be zero
+  error_pose_I<<0,0,0;
 }
 
 

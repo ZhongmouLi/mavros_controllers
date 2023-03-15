@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
   // nh_private.param<string>("log_level", log_level_, "Debug");
 
 
-  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info))
+  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
     {
         ros::console::notifyLoggerLevelsChanged();
     }
