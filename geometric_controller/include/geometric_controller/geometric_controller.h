@@ -51,6 +51,7 @@
 #include <string>
 
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <mavros_msgs/AttitudeTarget.h>
@@ -95,8 +96,6 @@ class geometricCtrl {
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
   ros::Subscriber referenceSub_;
-  ros::Subscriber flatreferenceSub_;
-  ros::Subscriber multiDOFJointSub_;
   ros::Subscriber mavstateSub_;
   ros::Subscriber mavposeSub_, gzmavposeSub_;
   ros::Subscriber mavtwistSub_;
@@ -111,6 +110,13 @@ class geometricCtrl {
   ros::ServiceServer land_service_;
   ros::Timer cmdloop_timer_, statusloop_timer_;
   ros::Time last_request_, reference_request_now_, reference_request_last_;
+
+  // added
+  ros::Time poscontrol_now_, poscontrol_last_;
+  double poscontrol_dt;
+  Eigen::Vector3d KposI_;
+  Eigen::Vector3d error_pose_I;
+  double KposI_z_, KposI_x_, KposI_y_;
 
   string mav_name_;
   bool fail_detec_, ctrl_enable_, feedthrough_enable_;
@@ -132,7 +138,11 @@ class geometricCtrl {
   MAV_STATE companion_state_ = MAV_STATE::MAV_STATE_ACTIVE;
 
   double initTargetPos_x_, initTargetPos_y_, initTargetPos_z_;
-  Eigen::Vector3d targetPos_, targetVel_, targetAcc_, targetJerk_, targetSnap_, targetPos_prev_, targetVel_prev_;
+  // Add
+  Eigen::Vector3d home_position_;
+
+  //
+  Eigen::Vector3d targetPos_, targetVel_, targetAcc_, targetSnap_, targetPos_prev_, targetVel_prev_;
   Eigen::Vector3d mavPos_, mavVel_, mavRate_;
   Eigen::Vector3d last_ref_acc_{Eigen::Vector3d::Zero()};
   double mavYaw_;
@@ -159,7 +169,8 @@ class geometricCtrl {
   void keyboardCallback(const geometry_msgs::Twist &msg);
   void cmdloopCallback(const ros::TimerEvent &event);
   void mavstateCallback(const mavros_msgs::State::ConstPtr &msg);
-  void mavposeCallback(const geometry_msgs::PoseStamped &msg);
+  //void mavposeCallback(const geometry_msgs::PoseStamped &msg);
+  void mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon);
   void mavtwistCallback(const geometry_msgs::TwistStamped &msg);
   void statusloopCallback(const ros::TimerEvent &event);
   bool ctrltriggerCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
@@ -173,15 +184,12 @@ class geometricCtrl {
                                 Eigen::Vector4d &curr_att);
   Eigen::Vector4d geometric_attcontroller(const Eigen::Vector4d &ref_att, const Eigen::Vector3d &ref_acc,
                                           Eigen::Vector4d &curr_att);
-  Eigen::Vector4d jerkcontroller(const Eigen::Vector3d &ref_jerk, const Eigen::Vector3d &ref_acc,
-                                 Eigen::Vector4d &ref_att, Eigen::Vector4d &curr_att);
 
   enum FlightState { WAITING_FOR_HOME_POSE, MISSION_EXECUTION, LANDING, LANDED } node_state;
 
   template <class T>
   void waitForPredicate(const T *pred, const std::string &msg, double hz = 2.0) {
     ros::Rate pause(hz);
-    ROS_INFO_STREAM(msg);
     while (ros::ok() && !(*pred)) {
       ros::spinOnce();
       pause.sleep();
