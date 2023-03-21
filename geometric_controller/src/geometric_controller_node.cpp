@@ -45,6 +45,16 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh("");
   ros::NodeHandle nh_private("~");
 
+  // change log level
+  // std::string log_level_;
+  // nh_private.param<string>("log_level", log_level_, "Debug");
+
+
+  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
+    {
+        ros::console::notifyLoggerLevelsChanged();
+    }
+
   geometricCtrl* geometricController = new geometricCtrl(nh, nh_private);
 
   dynamic_reconfigure::Server<geometric_controller::GeometricControllerConfig> srv;

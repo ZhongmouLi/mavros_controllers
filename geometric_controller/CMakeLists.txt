@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   mavros_extras
   mavros_msgs
   mavlink
+  librobot_traj_generate
 )
 
 generate_dynamic_reconfigure_options(
@@ -49,10 +50,11 @@ add_executable(geometric_controller_node
 add_dependencies(geometric_controller_node geometric_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(geometric_controller_node ${PROJECT_NAME} ${catkin_LIBRARIES})
 
-add_executable(geometric_controller_takeoff_node
-  src/gemmetri_control_takeoff.cpp
+
+add_executable(geometric_controller_takeoff_node_trajectory
+  src/geometric_cotnrol_trajectory_takeoff.cpp
 )
-target_link_libraries(geometric_controller_takeoff_node ${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(geometric_controller_takeoff_node_trajectory ${PROJECT_NAME} ${catkin_LIBRARIES})
 ##########
 # EXPORT #
 ##########
