@@ -35,6 +35,7 @@ include_directories(
   ${Eigen_INCLUDE_DIRS}
 )
 
+
 add_library(${PROJECT_NAME}
   src/geometric_controller.cpp 
 )
@@ -52,7 +53,7 @@ target_link_libraries(geometric_controller_node ${PROJECT_NAME} ${catkin_LIBRARI
 
 
 add_executable(geometric_controller_takeoff_node_trajectory
-  src/geometric_cotnrol_trajectory_takeoff.cpp
+  src/geometric_cotnrol_trajectory_generator.cpp
 )
 target_link_libraries(geometric_controller_takeoff_node_trajectory ${PROJECT_NAME} ${catkin_LIBRARIES})
 ##########
