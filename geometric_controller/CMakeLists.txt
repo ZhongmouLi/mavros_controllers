@@ -1,7 +1,9 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.16)
 project(geometric_controller)
 
-add_definitions(-std=c++11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -12,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   mavros_extras
   mavros_msgs
   mavlink
-  librobot_traj_generate
+  # librobot_traj_generate
 )
 
 generate_dynamic_reconfigure_options(
@@ -21,7 +23,7 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES geometric_controller
+  LIBRARIES ${PROJECT_NAME}_base ${PROJECT_NAME}_ros
   CATKIN_DEPENDS roscpp rospy std_msgs mavros_msgs geometry_msgs sensor_msgs tf
 )
 
@@ -35,27 +37,51 @@ include_directories(
   ${Eigen_INCLUDE_DIRS}
 )
 
+# add_library(${PROJECT_NAME}
+#   src/geometric_controller.cpp 
+# )
+# add_dependencies(geometric_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 
-add_library(${PROJECT_NAME}
-  src/geometric_controller.cpp 
+# geometric_controller base class
+add_library(${PROJECT_NAME}_base 
+  lib/geom_control_base.cpp 
 )
-add_dependencies(geometric_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+target_include_directories(${PROJECT_NAME}_base PUBLIC
+  include
+)
+
+target_compile_options(${PROJECT_NAME}_base PRIVATE -std=c++17 -Wall -Wextra)
+
+target_link_libraries(${PROJECT_NAME}_base  ${catkin_LIBRARIES})
+
+# geometric_controller_ros class
+add_library(${PROJECT_NAME}_ros
+  lib/geom_control_ros.cpp 
+)
+target_include_directories(${PROJECT_NAME}_ros PUBLIC
+  include
+  ${catkin_INCLUDE_DIRS}
+)
+target_compile_options(${PROJECT_NAME}_ros PRIVATE -std=c++17 -Wall -Wextra)
+
+target_link_libraries(${PROJECT_NAME}_ros ${catkin_LIBRARIES} ${PROJECT_NAME}_base)
+
 
 ############
 # BINARIES #
 ############
-add_executable(geometric_controller_node
-  src/geometric_controller_node.cpp
-)
-add_dependencies(geometric_controller_node geometric_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(geometric_controller_node ${PROJECT_NAME} ${catkin_LIBRARIES})
+# add_executable(geometric_controller_node
+#   src/geometric_controller_node.cpp
+# )
+# add_dependencies(geometric_controller_node geometric_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(geometric_controller_node ${PROJECT_NAME} ${catkin_LIBRARIES})
 
 
-add_executable(geometric_controller_takeoff_node_trajectory
-  src/geometric_cotnrol_trajectory_generator.cpp
-)
-target_link_libraries(geometric_controller_takeoff_node_trajectory ${PROJECT_NAME} ${catkin_LIBRARIES})
+# add_executable(geometric_controller_takeoff_node_trajectory
+#   src/geometric_cotnrol_trajectory_generator.cpp
+# )
+# target_link_libraries(geometric_controller_takeoff_node_trajectory ${PROJECT_NAME} ${catkin_LIBRARIES})
 ##########
 # EXPORT #
 ##########
