@@ -198,6 +198,13 @@
          geomControlBase();
 
 
+    public:
+        Eigen::Vector3d targetPosition() const { return targetPos_; }
+        Eigen::Vector3d targetVelocity() const { return targetVel_; }
+        Eigen::Vector3d homePosition() const { return home_position_; }
+        int controlMode() const { return ctrl_mode_; }
+        void controlMode(int mode) { ctrl_mode_ = mode; }
+
 
      private:
          // controlPosition calculates desired acc from reference position, vel and acc.

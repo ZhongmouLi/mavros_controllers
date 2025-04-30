@@ -73,6 +73,23 @@ private:
 
     std::vector<geometry_msgs::PoseStamped> posehistory_vector_; ///< History of poses for trajectory visualization
 
+    // ------------------ Helper Methods ------------------
+
+    /**
+     * @brief Publish reference pose for visualization
+     */
+    void pubReferencePose(const Eigen::Vector3d& target_position, const Eigen::Vector4d& target_attitude);
+
+    /**
+     * @brief Publish body rate commands to the flight controller
+     */
+    void pubRateCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude);
+
+    /**
+     * @brief Update and publish pose history for trajectory visualization
+     */
+    void updateAndPublishPoseHistory();
+
 
 public:
     /**
@@ -137,6 +154,4 @@ public:
      * @brief System status monitoring timer callback (1s)
      */
     void statusloopCallback(const ros::TimerEvent& event);
-
-
 };

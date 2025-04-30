@@ -46,15 +46,21 @@
  #include <geometry_msgs/TwistStamped.h>
  #include <Eigen/Dense>
  
- Eigen::Vector3d toEigen(const geometry_msgs::Point &p) {
+inline Eigen::Vector3d toEigen(const geometry_msgs::Point &p) {
     Eigen::Vector3d ev3(p.x, p.y, p.z);
     return ev3;
-  }
+}
   
-  inline Eigen::Vector3d toEigen(const geometry_msgs::Vector3 &v3) {
+inline Eigen::Vector3d toEigen(const geometry_msgs::Vector3 &v3) {
     Eigen::Vector3d ev3(v3.x, v3.y, v3.z);
     return ev3;
 }
+
+inline Eigen::Vector4d toEigen(const geometry_msgs::Quaternion &q) {
+  // Note: In Eigen, quaternion format is (w,x,y,z)
+  return Eigen::Vector4d(q.w, q.x, q.y, q.z);
+}
+
 
  #endif
  
