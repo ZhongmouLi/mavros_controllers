@@ -11,8 +11,6 @@ geomControlBase::~geomControlBase() {
 
 geomControlBase::geomControlBase():fail_detec_(false), ctrl_enable_(true), landing_commanded_(false), feedthrough_enable_(false)
 {
-    // Destructor
-    node_state_ = WAITING_FOR_HOME_POSE;
     home_position_set_ = false;
 }
 
@@ -26,10 +24,17 @@ void geomControlBase::setHomePosition(const Eigen::Vector3d &home_position) {
     home_position_set_ = true;
 }
 
+bool geomControlBase::isLanded() const {
+    // Old way:
+    // return (node_state_ == LANDED);
+    
+    // New way:
+    return (mission_state_ == MissionState::LANDED);
+}
 
 
 // input target position, velocity and acceleration
-void geomControlBase::inputTargetPostionVelAcc(const Eigen::Vector3d &target_pos, const Eigen::Vector3d &target_vel,
+void geomControlBase::inputTargetPositionVelAcc(const Eigen::Vector3d &target_pos, const Eigen::Vector3d &target_vel,
     const Eigen::Vector3d &target_acc) {
     targetPos_ = target_pos;
     targetVel_ = target_vel;
@@ -37,21 +42,21 @@ void geomControlBase::inputTargetPostionVelAcc(const Eigen::Vector3d &target_pos
 }
 
 // input previous target position and velocity
-void geomControlBase::updatePreviousTargePostionVelAconst(Eigen::Vector3d &target_pos_previous, const Eigen::Vector3d &target_vel_previous) {
+void geomControlBase::updatePreviousTargetPositionVelAcc(const Eigen::Vector3d &target_pos_previous, const Eigen::Vector3d &target_vel_previous) {
     targetPos_prev_ = target_pos_previous;
     targetVel_prev_ = target_vel_previous;
 }
 
 // input targe yaw angle 
-void geomControlBase::inputTargeYawAngle(const double &targe_yaw) {
-    mavYaw_ = targe_yaw;
+void geomControlBase::inputTargetYawAngle(const double &target_yaw) {
+    mavYaw_ = target_yaw;
 }
 
 
 
 
 // update mav with current position and attitude   
-void geomControlBase::updateMavPostionAttitude(const Eigen::Vector3d &mav_pos, const Eigen::Vector4d &mav_att) {
+void geomControlBase::updateMavPositionAttitude(const Eigen::Vector3d &mav_pos, const Eigen::Vector4d &mav_att) {
     mavPos_ = mav_pos;
     mavAtt_ = mav_att;
 }
@@ -69,20 +74,24 @@ void geomControlBase::updateMavVelRate(const Eigen::Vector3d &mav_vel, const Eig
 void geomControlBase::doPreTakeoff(){
 
     // ROS_INFO_STREAM_THROTTLE(2, "home_position is "<< home_position_);
-    if (!home_position_set_) {
+    if (home_position_set_) {
         Eigen::Vector3d desired_acc = controlPosition(home_position_, Eigen::MatrixXd::Zero(3, 1), Eigen::MatrixXd::Zero(3, 1));
     
         computeBodyRateCmd(cmdBodyRate_, desired_acc);
+
     }
     else {
         std::cout << "home position is not set" << std::endl;
+
+        
     }
         
 
-    // if( (current_state_.mode == "OFFBOARD") && current_state_.armed)
-    // {
-    //       node_state = MISSION_EXECUTION;
-    // }
+    // State transitions using the new enum classes
+    if (flight_arming_state_ == FlightArmingState::ARMED && 
+        flight_offboard_state_ == FlightOffboardState::OFFBOARD_ENABLED) {
+        setMissionState(MissionState::MISSION_EXECUTION);
+    }
 
 }
 
@@ -90,6 +99,10 @@ void geomControlBase::doPreTakeoff(){
 // this function is called when the drone is in mission execution state
 // it will calculate the control input based on the target position, velocity and acceleration
 void geomControlBase::doExecteMission() {
+
+    if (mission_state_ != MissionState::MISSION_EXECUTION) {
+        return;
+    }
 
     Eigen::Vector3d desired_acc;
   

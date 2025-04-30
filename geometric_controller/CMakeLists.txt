@@ -56,16 +56,16 @@ target_compile_options(${PROJECT_NAME}_base PRIVATE -std=c++17 -Wall -Wextra)
 target_link_libraries(${PROJECT_NAME}_base  ${catkin_LIBRARIES})
 
 # geometric_controller_ros class
-add_library(${PROJECT_NAME}_ros
-  lib/geom_control_ros.cpp 
-)
-target_include_directories(${PROJECT_NAME}_ros PUBLIC
-  include
-  ${catkin_INCLUDE_DIRS}
-)
-target_compile_options(${PROJECT_NAME}_ros PRIVATE -std=c++17 -Wall -Wextra)
+# add_library(${PROJECT_NAME}_ros
+#   lib/geom_control_ros.cpp 
+# )
+# target_include_directories(${PROJECT_NAME}_ros PUBLIC
+#   include
+#   ${catkin_INCLUDE_DIRS}
+# )
+# target_compile_options(${PROJECT_NAME}_ros PRIVATE -std=c++17 -Wall -Wextra)
 
-target_link_libraries(${PROJECT_NAME}_ros ${catkin_LIBRARIES} ${PROJECT_NAME}_base)
+# target_link_libraries(${PROJECT_NAME}_ros ${catkin_LIBRARIES} ${PROJECT_NAME}_base)
 
 
 ############

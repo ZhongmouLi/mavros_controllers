@@ -38,8 +38,8 @@
  * @author Jaeyoung Lim <jalim@ethz.ch>
  */
 
- #ifndef GEOME_CONTROLLER_H
- #define GEOME_CONTROLLER_H
+ #ifndef GEOM_CONTROLLER_H
+ #define GEOM_CONTROLLER_H
  #include <iostream>
  #include <chrono>  
  #include "common.h"
@@ -53,16 +53,16 @@
      private:
  
      // MAV mission state
-     enum FlightState {WAITING_FOR_HOME_POSE, MISSION_EXECUTION, LANDING, LANDED } node_state_;
+    //  enum MissionState {WAITING_FOR_HOME_POSE, MISSION_EXECUTION, LANDING, LANDED } node_state_ = WAITING_FOR_HOME_POSE; // by default it wait for home pose
  
  
      Eigen::Vector3d home_position_; // home position of MAV where it is placed
-     bool home_position_set_ = false; // if home position is set
+     bool home_position_set_ = false; // if home position is set and by default it is false
  
      bool received_home_pose;
  
      // target position, velocity, acceleration ans snap
-     Eigen::Vector3d targetPos_, targetVel_, targetAcc_, targetSnap_;
+     Eigen::Vector3d targetPos_{0,0,0}, targetVel_{0,0,0}, targetAcc_{0,0,0}, targetSnap_{0,0,0};
  
      // target attitude
      // note it can also be used as control input
@@ -88,7 +88,7 @@
  
  
      // controller mode
-     int ctrl_mode_; 
+     int ctrl_mode_ = ERROR_QUATERNION; 
 
      bool feedthrough_enable_; // flat to use feedthrough or not
      bool fail_detec_, ctrl_enable_;
@@ -120,11 +120,50 @@
      double norm_thrust_offset_ =0.1;
      // commands
      // control inputs sent to MAV 
-     Eigen::Vector4d cmdBodyRate_;  //{wx, wy, wz, Thrust}
- 
+     Eigen::Vector4d cmdBodyRate_{0,0,0,0};  //{wx, wy, wz, Thrust}
+
+    public:
+         enum class MissionState {
+             WAITING_FOR_HOME_POSE,
+             MISSION_EXECUTION,
+             LANDING,
+             LANDED
+         };
+         
+         enum class FlightArmingState {
+             DISARMED,
+             ARMED
+         };
+         
+         enum class FlightOffboardState {
+             OFFBOARD_ENABLED,
+             OFFBOARD_DISABLED
+         };
+
+    protected: // Allow derived classes to access state
+         MissionState mission_state_ = MissionState::WAITING_FOR_HOME_POSE;
+
+         FlightArmingState flight_arming_state_ = FlightArmingState::DISARMED;
+
+         FlightOffboardState flight_offboard_state_ = FlightOffboardState::OFFBOARD_DISABLED;
+         
+         // Protected setters/getters for inherited classes
+         void setMissionState(const MissionState &state) { mission_state_ = state; };
+
+         void setFlightArmingState(const FlightArmingState &flight_arming_state) { 
+             flight_arming_state_ = flight_arming_state; 
+         };
+
+         void setFlightOffboardState(const FlightOffboardState &flight_offboard_state) { 
+             flight_offboard_state_ = flight_offboard_state; 
+         };
+
      public: 
 
          void setHomePosition(const Eigen::Vector3d &home_position);
+         
+         bool isHomePositionSet() const { return home_position_set_; }         
+
 
          void setPostControlPGains(const Eigen::Vector3d &Kpos) {Kpos_ = Kpos; };
         
@@ -133,29 +172,33 @@
          void setPostControlIGains(const Eigen::Vector3d &KposI) {KposI_ = KposI; };
         
          // get target position, velocity, acceleration 
-         void inputTargetPostionVelAcc(const Eigen::Vector3d &target_pos, const Eigen::Vector3d &target_vel,
+         void inputTargetPositionVelAcc(const Eigen::Vector3d &target_pos, const Eigen::Vector3d &target_vel,
              const Eigen::Vector3d &target_acc);
 
-         void inputTargeYawAngle(const double &targe_yaw) ;    
+         void inputTargetYawAngle(const double &target_yaw) ;    
  
-         void updatePreviousTargePostionVelAconst(Eigen::Vector3d &target_pos_previous, const Eigen::Vector3d &target_vel_previous);
+         void updatePreviousTargetPositionVelAcc(const Eigen::Vector3d &target_pos_previous, const Eigen::Vector3d &target_vel_previous);
  
          // update mav with current position and attitude   
-         void updateMavPostionAttitude(const Eigen::Vector3d &mav_pos, const Eigen::Vector4d &mav_att); 
+         void updateMavPositionAttitude(const Eigen::Vector3d &mav_pos, const Eigen::Vector4d &mav_att); 
  
          // update mav with current linear velocity and angular velocity
          void updateMavVelRate(const Eigen::Vector3d &mav_vel, const Eigen::Vector3d &mav_rate);
+
+         Eigen::Vector4d bodyRateCommand() const { return cmdBodyRate_; }
 
          void doPreTakeoff();
 
          void doExecteMission();
 
+         bool isLanded() const;
+
          ~geomControlBase();
 
          geomControlBase();
 
-;
- 
+
+
      private:
          // controlPosition calculates desired acc from reference position, vel and acc.
          Eigen::Vector3d controlPosition(const Eigen::Vector3d &target_pos, const Eigen::Vector3d &target_vel,
