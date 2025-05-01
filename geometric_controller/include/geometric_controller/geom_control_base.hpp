@@ -64,9 +64,7 @@
      // target position, velocity, acceleration ans snap
      Eigen::Vector3d targetPos_{0,0,0}, targetVel_{0,0,0}, targetAcc_{0,0,0}, targetSnap_{0,0,0};
  
-     // target attitude
-     // note it can also be used as control input
-     Eigen::Vector4d q_des;
+
  
      // targe yaw angle
      double mavYaw_;
@@ -118,9 +116,18 @@
      // mapping thrust force to thrust
      double norm_thrust_const_ = 0.05;
      double norm_thrust_offset_ =0.1;
+
      // commands
      // control inputs sent to MAV 
      Eigen::Vector4d cmdBodyRate_{0,0,0,0};  //{wx, wy, wz, Thrust}
+
+          // target attitude
+     // note it can also be used as control input
+     Eigen::Vector4d q_des_{1,0,0,0};   //{w,x,y,z}
+    //  msg.orientation.w = target_attitude(0);
+    //  msg.orientation.x = target_attitude(1);
+    //  msg.orientation.y = target_attitude(2);
+    //  msg.orientation.z = target_attitude(3);
 
     public:
          enum class MissionState {
@@ -187,9 +194,11 @@
 
          Eigen::Vector4d bodyRateCommand() const { return cmdBodyRate_; }
 
-         void doPreTakeoff();
+         Eigen::Vector4d attitudeCommand() const { return q_des_; };
 
-         void doExecteMission();
+         void computeControlCmds4PreTakeoff();
+
+         void computeControlCmds4Mission();
 
          bool isLanded() const;
 
@@ -197,13 +206,22 @@
 
          geomControlBase();
 
+    protected:
+            void setVelocityYawMode(const bool &enable) { velocity_yaw_ = enable; }
+            void setDragCoefficients(const Eigen::Vector3d &drag_coeffs) { D_ = drag_coeffs; }
+            void setAttitudeControllerGain(double gain) { attctrl_tau_ = gain; }
+            void setThrustParameters(double thrust_const, double thrust_offset) {
+                norm_thrust_const_ = thrust_const;
+                norm_thrust_offset_ = thrust_offset;
+            }
+            void setMaxFeedbackAcceleration(double max_acc) { max_fb_acc_ = max_acc; }     
 
     public:
         Eigen::Vector3d targetPosition() const { return targetPos_; }
         Eigen::Vector3d targetVelocity() const { return targetVel_; }
         Eigen::Vector3d homePosition() const { return home_position_; }
         int controlMode() const { return ctrl_mode_; }
-        void controlMode(int mode) { ctrl_mode_ = mode; }
+        void setControlMode(int mode) { ctrl_mode_ = mode; }
 
 
      private:

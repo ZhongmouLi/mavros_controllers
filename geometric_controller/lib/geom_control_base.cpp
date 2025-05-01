@@ -71,7 +71,7 @@ void geomControlBase::updateMavVelRate(const Eigen::Vector3d &mav_vel, const Eig
 // this function is called when the drone is in pre takeoff state
 // it will set the home position as the destination and calculate the desired acceleration and compute the control input body rate command
 // it switch to mission execution state when the drone is armed and in offboard mode
-void geomControlBase::doPreTakeoff(){
+void geomControlBase::computeControlCmds4PreTakeoff(){
 
     // ROS_INFO_STREAM_THROTTLE(2, "home_position is "<< home_position_);
     if (home_position_set_) {
@@ -98,7 +98,7 @@ void geomControlBase::doPreTakeoff(){
 // do mission execution
 // this function is called when the drone is in mission execution state
 // it will calculate the control input based on the target position, velocity and acceleration
-void geomControlBase::doExecteMission() {
+void geomControlBase::computeControlCmds4Mission() {
 
     if (mission_state_ != MissionState::MISSION_EXECUTION) {
         return;
@@ -217,14 +217,14 @@ Eigen::Vector3d geomControlBase::poscontroller(const Eigen::Vector3d &pos_error,
 
 void geomControlBase::computeBodyRateCmd(Eigen::Vector4d &bodyrate_cmd, const Eigen::Vector3d &a_des) {
     // Reference attitude
-    q_des = acc2quaternion(a_des, mavYaw_);
+    q_des_ = acc2quaternion(a_des, mavYaw_);
   
     // Choose which kind of attitude controller you are running
       if (ctrl_mode_ == ERROR_GEOMETRIC) {
-        bodyrate_cmd = geometric_attcontroller(q_des, a_des, mavAtt_);  // Calculate BodyRate
+        bodyrate_cmd = geometric_attcontroller(q_des_, a_des, mavAtt_);  // Calculate BodyRate
   
       } else {
-        bodyrate_cmd = attcontroller(q_des, a_des, mavAtt_);  // Calculate BodyRate
+        bodyrate_cmd = attcontroller(q_des_, a_des, mavAtt_);  // Calculate BodyRate
       }
   }
 

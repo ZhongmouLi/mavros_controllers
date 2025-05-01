@@ -73,7 +73,10 @@ private:
 
     std::vector<geometry_msgs::PoseStamped> posehistory_vector_; ///< History of poses for trajectory visualization
 
-    // ------------------ Helper Methods ------------------
+    // ------------------ Control Mode ------------------
+    bool sim_enable_ = true; ///< Flag to indicate if in simulation mode
+
+    // ------------------ Control Methods ------------------
 
     /**
      * @brief Publish reference pose for visualization
@@ -83,12 +86,18 @@ private:
     /**
      * @brief Publish body rate commands to the flight controller
      */
-    void pubRateCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude);
+    void pubControlCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude);
 
     /**
      * @brief Update and publish pose history for trajectory visualization
      */
     void updateAndPublishPoseHistory();
+
+    /**
+     * @brief publish system status
+     */    
+    
+    void pubSystemStatus();
 
 
 public:

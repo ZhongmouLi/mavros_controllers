@@ -34,6 +34,99 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     last_request_ = ros::Time::now();
     reference_request_now_ = ros::Time::now();
     reference_request_last_ = ros::Time::now();
+
+
+    // ------------------ Load Parameters ------------------
+    
+    // System identification
+    std::string mav_name;
+    nh_private_.param<std::string>("mavname", mav_name, "iris");
+    
+    // Controller mode
+    int ctrl_mode;
+    nh_private_.param<int>("ctrl_mode", ctrl_mode, ERROR_QUATERNION);
+    setControlMode(ctrl_mode);
+    
+    // Simulation and yaw mode
+    nh_private_.param<bool>("enable_sim", sim_enable_, true);
+    
+    bool velocity_yaw;
+    nh_private_.param<bool>("velocity_yaw", velocity_yaw, false);
+    setVelocityYawMode(velocity_yaw);
+    
+    // Maximum acceleration
+    double max_fb_acc;
+    nh_private_.param<double>("max_acc", max_fb_acc, 9.0);
+    setMaxFeedbackAcceleration(max_fb_acc);
+    
+    // Initial yaw heading
+    double yaw_heading;
+    nh_private_.param<double>("yaw_heading", yaw_heading, 0.0);
+    inputTargetYawAngle(yaw_heading);
+    
+    // Drag coefficients
+    double dx, dy, dz;
+    nh_private_.param<double>("drag_dx", dx, 0.0);
+    nh_private_.param<double>("drag_dy", dy, 0.0);
+    nh_private_.param<double>("drag_dz", dz, 0.0);
+    Eigen::Vector3d drag_coeffs(dx, dy, dz);
+    setDragCoefficients(drag_coeffs);
+    
+    // Attitude controller parameters
+    double attctrl_constant;
+    nh_private_.param<double>("attctrl_constant", attctrl_constant, 0.1);
+    setAttitudeControllerGain(attctrl_constant);
+    
+    // Thrust mapping parameters
+    double norm_thrust_const, norm_thrust_offset;
+    nh_private_.param<double>("normalizedthrust_constant", norm_thrust_const, 0.05);
+    nh_private_.param<double>("normalizedthrust_offset", norm_thrust_offset, 0.1);
+    setThrustParameters(norm_thrust_const, norm_thrust_offset);
+    
+    // Position controller gains
+    double Kp_x, Kp_y, Kp_z;
+    nh_private_.param<double>("Kp_x", Kp_x, 8.0);
+    nh_private_.param<double>("Kp_y", Kp_y, 8.0);
+    nh_private_.param<double>("Kp_z", Kp_z, 10.0);
+    
+    // Velocity controller gains
+    double Kv_x, Kv_y, Kv_z;
+    nh_private_.param<double>("Kv_x", Kv_x, 1.5);
+    nh_private_.param<double>("Kv_y", Kv_y, 1.5);
+    nh_private_.param<double>("Kv_z", Kv_z, 3.3);
+    
+    // Position integral controller gains
+    double KposI_x, KposI_y, KposI_z;
+    nh_private_.param<double>("KposI_x", KposI_x, 0.1);
+    nh_private_.param<double>("KposI_y", KposI_y, 0.1);
+    nh_private_.param<double>("KposI_z", KposI_z, 0.1);
+    
+    // Set control gains (note the negative signs as in original code)
+    Eigen::Vector3d Kpos(-Kp_x, -Kp_y, -Kp_z);
+    Eigen::Vector3d Kvel(-Kv_x, -Kv_y, -Kv_z);
+    Eigen::Vector3d KposI(-KposI_x, -KposI_y, -KposI_z);
+    
+    setPostControlPGains(Kpos);
+    setPostControlDGains(Kvel);
+    setPostControlIGains(KposI);
+    
+    // Initial target position
+    double init_pos_x, init_pos_y, init_pos_z;
+    nh_private_.param<double>("init_pos_x", init_pos_x, 0.0);
+    nh_private_.param<double>("init_pos_y", init_pos_y, 0.0);
+    nh_private_.param<double>("init_pos_z", init_pos_z, 2.0);
+    
+    // Set initial target position and zero velocity/acceleration
+    Eigen::Vector3d init_pos(init_pos_x, init_pos_y, init_pos_z);
+    Eigen::Vector3d zero_vel(0.0, 0.0, 0.0);
+    Eigen::Vector3d zero_acc(0.0, 0.0, 0.0);
+    inputTargetPositionVelAcc(init_pos, zero_vel, zero_acc);
+    
+    // Pose history window
+    int posehistory_window;
+    nh_private_.param<int>("posehistory_window", posehistory_window, 200);
+    posehistory_vector_.reserve(posehistory_window);
+
 }
 
 geomControlROS::~geomControlROS()
@@ -117,7 +210,7 @@ void geomControlROS::mavtwistCallback(const geometry_msgs::TwistStamped& msg)
 bool geomControlROS::ctrltriggerCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res)
 {
     // Use the setter method to update the control mode
-    controlMode(req.data ? ERROR_GEOMETRIC : ERROR_QUATERNION);
+    setControlMode(req.data ? ERROR_GEOMETRIC : ERROR_QUATERNION);
     
     res.success = true;
     res.message = "Controller mode switched";
@@ -136,17 +229,18 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
 {
     switch (mission_state_) {
     case MissionState::WAITING_FOR_HOME_POSE:
-        doPreTakeoff();
+
+        computeControlCmds4PreTakeoff();
         // State transition happens in doPreTakeoff() based on flight_arming_state_ and flight_offboard_state_
-        pubRateCommands(bodyRateCommand(), Eigen::Vector4d(1,0,0,0)); // Using identity quaternion for now
+        pubControlCommands(bodyRateCommand(), Eigen::Vector4d(1,0,0,0)); // Using identity quaternion for now
 
         break;
         
     case MissionState::MISSION_EXECUTION:
-        doExecteMission();
+        computeControlCmds4Mission();
         
         // Publish control commands
-        pubRateCommands(bodyRateCommand(), Eigen::Vector4d(1,0,0,0)); // Using identity quaternion for now
+        pubControlCommands(bodyRateCommand(), attitudeCommand()); // Using identity quaternion for now
         
         // Update and publish pose history
         updateAndPublishPoseHistory();
@@ -180,25 +274,50 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
 
 void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
 {
-    // Only try to arm and switch to offboard mode if not already done
-    if (flight_arming_state_ == FlightArmingState::DISARMED && 
-        (ros::Time::now() - last_request_ > ros::Duration(5.0))) {
-        arm_cmd_.request.value = true;
-        if (arming_client_.call(arm_cmd_) && arm_cmd_.response.success) {
-            ROS_INFO("Vehicle armed");
+    if (sim_enable_) {
+        // Simulation mode logic for arming and enabling OFFBOARD
+        
+        // First try to switch to OFFBOARD mode if not already in it
+        if (current_state_.mode != "OFFBOARD" && 
+            (ros::Time::now() - last_request_ > ros::Duration(5.0))) {
+            offb_set_mode_.request.custom_mode = "OFFBOARD";
+            if (set_mode_client_.call(offb_set_mode_) && offb_set_mode_.response.mode_sent) {
+                ROS_INFO("Offboard enabled");
+            }
+            last_request_ = ros::Time::now();
+        } 
+        // Then try to arm if not already armed
+        else if (!current_state_.armed && 
+                 (ros::Time::now() - last_request_ > ros::Duration(5.0))) {
+            arm_cmd_.request.value = true;
+            if (arming_client_.call(arm_cmd_) && arm_cmd_.response.success) {
+                ROS_INFO("Vehicle armed");
+            }
+            last_request_ = ros::Time::now();
         }
-        last_request_ = ros::Time::now();
+    } 
+    else {
+        // Real hardware mode - don't automatically arm or change modes
+        // Any hardware-specific status updates can go here
+        ROS_INFO("Waiting for being armed and OFFBOARD mode using TRANSMITTER.");
+    }
+    
+    // Update the state variables based on current_state_ regardless of simulation mode
+    // Update the state variables based on current_state_
+    if (current_state_.armed) {
+        setFlightArmingState(FlightArmingState::ARMED);
+    } else {
+        setFlightArmingState(FlightArmingState::DISARMED);
     }
 
-    if (flight_offboard_state_ == FlightOffboardState::OFFBOARD_DISABLED && 
-        flight_arming_state_ == FlightArmingState::ARMED &&
-        (ros::Time::now() - last_request_ > ros::Duration(5.0))) {
-        offb_set_mode_.request.custom_mode = "OFFBOARD";
-        if (set_mode_client_.call(offb_set_mode_) && offb_set_mode_.response.mode_sent) {
-            ROS_INFO("Offboard enabled");
-        }
-        last_request_ = ros::Time::now();
+    // Set offboard state based on flight mode, independent of arming status
+    if (current_state_.mode == "OFFBOARD") {
+        setFlightOffboardState(FlightOffboardState::OFFBOARD_ENABLED);
+    } else {
+        setFlightOffboardState(FlightOffboardState::OFFBOARD_DISABLED);
     }
+    // Publish system status
+    pubSystemStatus();
 }
 
 void geomControlROS::pubReferencePose(const Eigen::Vector3d& target_position, const Eigen::Vector4d& target_attitude)
@@ -216,7 +335,7 @@ void geomControlROS::pubReferencePose(const Eigen::Vector3d& target_position, co
     referencePosePub_.publish(msg);
 }
 
-void geomControlROS::pubRateCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude)
+void geomControlROS::pubControlCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude)
 {
     mavros_msgs::AttitudeTarget msg;
     msg.header.stamp = ros::Time::now();
@@ -241,3 +360,30 @@ void geomControlROS::updateAndPublishPoseHistory()
     path_msg.poses = posehistory_vector_;
     posehistoryPub_.publish(path_msg);
 }
+
+void geomControlROS::pubSystemStatus() {
+  
+    mavros_msgs::CompanionProcessStatus msg;
+    msg.header.stamp = ros::Time::now();
+    msg.component = 196;  // MAV_COMPONENT_ID_AVOIDANCE (standard value for companion computers)
+    
+    // Convert MissionState enum to appropriate status code
+    switch (mission_state_) {
+        case MissionState::WAITING_FOR_HOME_POSE:
+            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_STANDBY;
+            break;
+        case MissionState::MISSION_EXECUTION:
+            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_ACTIVE;
+            break;
+        case MissionState::LANDING:
+            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_CRITICAL;
+            break;
+        case MissionState::LANDED:
+            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_FLIGHT_TERMINATION;
+            break;
+        default:
+            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_UNINIT;
+    }
+    
+    systemstatusPub_.publish(msg);
+  }
