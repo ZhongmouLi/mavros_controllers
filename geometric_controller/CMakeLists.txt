@@ -23,7 +23,7 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES ${PROJECT_NAME}_base ${PROJECT_NAME}_ros
+  LIBRARIES ${PROJECT_NAME}_base ${PROJECT_NAME}_ros 
   CATKIN_DEPENDS roscpp rospy std_msgs mavros_msgs geometry_msgs sensor_msgs tf
 )
 
@@ -71,6 +71,18 @@ target_link_libraries(${PROJECT_NAME}_ros ${catkin_LIBRARIES} ${PROJECT_NAME}_ba
 ############
 # BINARIES #
 ############
+add_executable(geometric_controller_node src/gem_control_node.cpp)
+
+add_dependencies(geometric_controller_node
+  ${PROJECT_NAME}_ros
+  ${PROJECT_NAME}_base
+)
+
+target_link_libraries(geometric_controller_node
+  ${PROJECT_NAME}_ros
+  ${catkin_LIBRARIES}
+)
+
 # add_executable(geometric_controller_node
 #   src/geometric_controller_node.cpp
 # )
