@@ -131,7 +131,7 @@
 
     public:
          enum class MissionState {
-             WAITING_FOR_HOME_POSE,
+             PRE_TAKEOFF,
              TAKEOFF,
              MISSION_EXECUTION,
              LANDING,
@@ -149,7 +149,7 @@
          };
 
     protected: // Allow derived classes to access state
-         MissionState mission_state_ = MissionState::WAITING_FOR_HOME_POSE;
+         MissionState mission_state_ = MissionState::PRE_TAKEOFF;
 
          FlightArmingState flight_arming_state_ = FlightArmingState::DISARMED;
 
@@ -222,18 +222,22 @@
             void computeControlCmds4Takeoff();
 
             void setTakeoffHeightAndTime(const double &takeoff_height, const double &takeoff_time) { takeoff_height_ = takeoff_height; takeoff_time_ = takeoff_time;};
-         
- 
-    private:
-       
+
+            Eigen::Vector3d mavPost() const { return mavPos_; }
+            Eigen::Vector3d mavVel() const { return mavVel_; }
+            Eigen::Vector4d mavAtt() const { return mavAtt_; }
+            Eigen::Vector3d mavRate() const { return mavRate_; }
+
             double takeoff_height_ = 0.5;
 
             double takeoff_time_ = 5.0; // time to take off
+            
 
     public:
         Eigen::Vector3d targetPosition() const { return targetPos_; };
         Eigen::Vector3d targetVelocity() const { return targetVel_; };
         Eigen::Vector3d homePosition() const { return home_position_; };
+        Eigen::Vector3d takeoffTargetPosition() const { return home_position_ + Eigen::Vector3d(0, 0, 1) * takeoff_height_; };
         int controlMode() const { return ctrl_mode_; };
         void setControlMode(int mode) { ctrl_mode_ = mode; };
 

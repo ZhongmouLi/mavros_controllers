@@ -87,12 +87,6 @@ void geomControlBase::computeControlCmds4PreTakeoff(){
     }
         
 
-    // State transitions using the new enum classes
-    if (flight_arming_state_ == FlightArmingState::ARMED && 
-        flight_offboard_state_ == FlightOffboardState::OFFBOARD_ENABLED) {
-        setMissionState(MissionState::MISSION_EXECUTION);
-    }
-
 }
 
 
@@ -148,6 +142,8 @@ void geomControlBase::computeControlCmds4Takeoff() {
     computeBodyRateCmd(cmdBodyRate_, desired_acc);
     
 }
+
+
 
 
 // do mission execution

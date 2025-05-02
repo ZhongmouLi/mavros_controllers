@@ -1,4 +1,5 @@
 #include "geometric_controller/geom_control_ros.hpp"
+#include <fstream>
 
 geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
     : geomControlBase(), // Call the base class constructor
@@ -9,7 +10,8 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     referenceSub_ = nh_.subscribe("reference/setpoint", 1, &geomControlROS::targetCallback, this, ros::TransportHints().tcpNoDelay());
     yawreferenceSub_ = nh_.subscribe("reference/yaw", 1, &geomControlROS::yawtargetCallback, this, ros::TransportHints().tcpNoDelay());
     mavstateSub_ = nh_.subscribe("mavros/state", 1, &geomControlROS::mavstateCallback, this, ros::TransportHints().tcpNoDelay());
-    mavposeSub_ = nh_.subscribe("vicon/drone", 1, &geomControlROS::mavposeCallback, this, ros::TransportHints().tcpNoDelay());
+    // mavposeSub_ = nh_.subscribe("vicon/drone", 1, &geomControlROS::mavposeCallback, this, ros::TransportHints().tcpNoDelay());
+    mavposeSub_ = nh_.subscribe("mavros/local_position/pose", 1, &geomControlROS::mavposeCallback, this, ros::TransportHints().tcpNoDelay());
     mavtwistSub_ = nh_.subscribe("mavros/local_position/velocity_local", 1, &geomControlROS::mavtwistCallback, this, ros::TransportHints().tcpNoDelay());
 
     // ------------------ Setup Publishers ------------------
@@ -34,6 +36,8 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     last_request_ = ros::Time::now();
     reference_request_now_ = ros::Time::now();
     reference_request_last_ = ros::Time::now();
+
+    mavpose_receive_last_ = ros::Time::now();
 
 
     // ------------------ Load Parameters ------------------
@@ -127,6 +131,14 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     nh_private_.param<int>("posehistory_window", posehistory_window, 200);
     posehistory_vector_.reserve(posehistory_window);
 
+    // Set takeoff height and time
+    double takeoff_height;
+    nh_private_.param<double>("takeoff_height", takeoff_height, 1.0);
+    double takeoff_time;
+    nh_private_.param<double>("takeoff_time", takeoff_time, 5.0);
+
+    setTakeoffHeightAndTime(takeoff_height, takeoff_time);
+
 }
 
 geomControlROS::~geomControlROS()
@@ -175,32 +187,77 @@ void geomControlROS::mavstateCallback(const mavros_msgs::State::ConstPtr& msg)
     }
 }
 
-void geomControlROS::mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon)
-{
-    geometry_msgs::Pose pose;
-    pose.position.x = msg_vicon->transform.translation.x;
-    pose.position.y = msg_vicon->transform.translation.y;
-    pose.position.z = msg_vicon->transform.translation.z;
-    pose.orientation = msg_vicon->transform.rotation;
+// void geometricCtrl::mavposeCallback(const geometry_msgs::PoseStamped &msg) {
+//     if (!received_home_pose) {
+//       received_home_pose = true;
+//       home_pose_ = msg.pose;
+//       ROS_INFO_STREAM("Home pose initialized to: " << home_pose_);
+//     }
+//     mavPos_ = toEigen(msg.pose.position);
+//     mavAtt_(0) = msg.pose.orientation.w;
+//     mavAtt_(1) = msg.pose.orientation.x;
+//     mavAtt_(2) = msg.pose.orientation.y;
+//     mavAtt_(3) = msg.pose.orientation.z;
+//   }
 
+void geomControlROS::mavposeCallback(const geometry_msgs::PoseStamped &msg)
+{
+    if ((ros::Time::now() - mavpose_receive_last_).toSec() > 2.0) {  // e.g., 1 second without pose
+        ROS_WARN_STREAM_THROTTLE(2.0, "No drone pose is received yet");
+    }
+    // Directly use pose from PoseStamped message
+    geometry_msgs::Pose pose = msg.pose;
+
+    // Check and set home position if not set
     if (!isHomePositionSet()) {
         setHomePosition(toEigen(pose.position));
         ROS_INFO_STREAM("Home pose initialized to: " << toEigen(pose.position).transpose());
     }
 
+    // Update current MAV position and attitude
     updateMavPositionAttitude(toEigen(pose.position), toEigen(pose.orientation));
-    
+
+    mavpose_receive_last_ = ros::Time::now();  // Update last received time
+
     // Add current pose to history vector
-    geometry_msgs::PoseStamped pose_stamped;
-    pose_stamped.header.stamp = ros::Time::now();
-    pose_stamped.header.frame_id = "map";
-    pose_stamped.pose = pose;
-    
-    posehistory_vector_.insert(posehistory_vector_.begin(), pose_stamped);
-    if (posehistory_vector_.size() > 200) { // Limit history size
-        posehistory_vector_.pop_back();
-    }
+    // geometry_msgs::PoseStamped pose_stamped = msg;
+    // pose_stamped.header.stamp = ros::Time::now();
+    // pose_stamped.header.frame_id = "map";  // Ensure consistent frame, if needed
+
+    // posehistory_vector_.insert(posehistory_vector_.begin(), pose_stamped);
+    // if (posehistory_vector_.size() > 200) { // Limit history size
+    //     posehistory_vector_.pop_back();
+    // }
 }
+
+
+
+// void geomControlROS::mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon)
+// {
+//     geometry_msgs::Pose pose;
+//     pose.position.x = msg_vicon->transform.translation.x;
+//     pose.position.y = msg_vicon->transform.translation.y;
+//     pose.position.z = msg_vicon->transform.translation.z;
+//     pose.orientation = msg_vicon->transform.rotation;
+
+//     if (!isHomePositionSet()) {
+//         setHomePosition(toEigen(pose.position));
+//         ROS_INFO_STREAM("Home pose initialized to: " << toEigen(pose.position).transpose());
+//     }
+
+//     updateMavPositionAttitude(toEigen(pose.position), toEigen(pose.orientation));
+    
+//     // Add current pose to history vector
+//     geometry_msgs::PoseStamped pose_stamped;
+//     pose_stamped.header.stamp = ros::Time::now();
+//     pose_stamped.header.frame_id = "map";
+//     pose_stamped.pose = pose;
+    
+//     posehistory_vector_.insert(posehistory_vector_.begin(), pose_stamped);
+//     if (posehistory_vector_.size() > 200) { // Limit history size
+//         posehistory_vector_.pop_back();
+//     }
+// }
 
 void geomControlROS::mavtwistCallback(const geometry_msgs::TwistStamped& msg)
 {
@@ -228,24 +285,101 @@ bool geomControlROS::landCallback(std_srvs::SetBool::Request& req, std_srvs::Set
 void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
 {
     switch (mission_state_) {
-    case MissionState::WAITING_FOR_HOME_POSE:
 
-        computeControlCmds4PreTakeoff();
-        // State transition happens in doPreTakeoff() based on flight_arming_state_ and flight_offboard_state_
-        pubControlCommands(bodyRateCommand(), Eigen::Vector4d(1,0,0,0)); // Using identity quaternion for now
+    case MissionState::PRE_TAKEOFF:{
+
+        // check if home position is set, vehicle is armed, and OFFBOARD mode is enabled
+        if (!isHomePositionSet()) {
+            ROS_INFO_THROTTLE(1.0, "PRE_TAKEOFF: waiting for home position...");
+            break;
+        }
+        if (flight_arming_state_ == FlightArmingState::DISARMED) {
+            ROS_INFO_THROTTLE(1.0, "PRE_TAKEOFF: waiting for vehicle to be armed...");
+            break;
+        }
+        if (flight_offboard_state_ == FlightOffboardState::OFFBOARD_DISABLED) {
+            ROS_INFO_THROTTLE(1.0, "PRE_TAKEOFF: waiting for OFFBOARD mode...");
+            break;
+        }
+
+        // get the current time
+
+        if(!pre_takeoff_flag_) {
+            pre_takeoff_begin_ = ros::Time::now();
+            pre_takeoff_flag_ = true;
+            ROS_INFO("PRE_TAKEOFF initiated");
+        } 
+
+        // Compute the time since pre-takeoff began
+        pre_takeoff_now_ = ros::Time::now();
+        double pre_takeoff_current_step = (pre_takeoff_now_ - pre_takeoff_begin_).toSec();
+
+
+        // do pre-takeoff preparation if pre_takeoff_current_step is less than 5 seconds
+        if (pre_takeoff_current_step < 5) {
+            
+            computeControlCmds4PreTakeoff();
+            // State transition happens in doPreTakeoff() based on flight_arming_state_ and flight_offboard_state_
+            pubControlCommands(bodyRateCommand(), Eigen::Vector4d(1,0,0,0)); // Using identity quaternion for now
+
+            ROS_INFO_STREAM_THROTTLE(1.0, "PRE_TAKEOFF: spinning up motors and preparing for takeoff for " << (5 - pre_takeoff_current_step) << " seconds");
+
+        } else {
+            // set the mission state to TAKEOFF
+            setMissionState(MissionState::TAKEOFF);
+            pre_takeoff_flag_ = false;
+        }
+
 
         break;
+
+        }
+
+        case MissionState::TAKEOFF: {
+            // Check if takeoff has been initiated
+            if (!take_off_flag_) {
+                take_off_begin_ = ros::Time::now();
+                take_off_flag_ = true;
+                ROS_INFO("TAKEOFF initiated");
+                break;
+            }
         
-    case MissionState::MISSION_EXECUTION:
+            // Compute the time since takeoff began
+            take_off_now_ = ros::Time::now();
+            double take_off_current_step = (take_off_now_ - take_off_begin_).toSec();
+        
+            // Compute the target position, velocity, and acceleration for takeoff
+            computeTrajectory4Takeoff(take_off_current_step);
+
+            // computeControlCmds4Takeoff();
+            computeControlCmds4Takeoff();
+        
+
+            // check if takeoff is completed by checking the error between the target position and current position
+            // if yes, set the mission state to MISSION_EXECUTION
+            auto error = (takeoffTargetPosition() - mavPost()).norm();
+            if ((take_off_current_step >= (takeoff_time_ + 5)) && (error < 0.5)) {
+                ROS_INFO("TAKEOFF: completed");
+                setMissionState(MissionState::MISSION_EXECUTION);
+            }
+            else {
+                // Publish the reference pose for visualization
+                ROS_INFO_STREAM_THROTTLE(1.0, "TAKEOFF: takeoff in progress and target post is "  << takeoffTargetPosition().transpose() << " and current error is " << error);
+            }
+            break;
+        }     
+        
+    case MissionState::MISSION_EXECUTION:{
         computeControlCmds4Mission();
         
         // Publish control commands
-        pubControlCommands(bodyRateCommand(), attitudeCommand()); // Using identity quaternion for now
+        pubControlCommands(bodyRateCommand(), attitudeCommand()); 
         
         // Update and publish pose history
         updateAndPublishPoseHistory();
         
         break;
+        }
         
     case MissionState::LANDING: {
         geometry_msgs::PoseStamped landing_msg;
@@ -322,43 +456,33 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
 
 void geomControlROS::pubReferencePose(const Eigen::Vector3d& target_position, const Eigen::Vector4d& target_attitude)
 {
-    geometry_msgs::PoseStamped msg;
-    msg.header.stamp = ros::Time::now();
-    msg.header.frame_id = "map";
-    msg.pose.position.x = target_position(0);
-    msg.pose.position.y = target_position(1);
-    msg.pose.position.z = target_position(2);
-    msg.pose.orientation.w = target_attitude(0);
-    msg.pose.orientation.x = target_attitude(1);
-    msg.pose.orientation.y = target_attitude(2);
-    msg.pose.orientation.z = target_attitude(3);
-    referencePosePub_.publish(msg);
+    // lockstep
 }
 
 void geomControlROS::pubControlCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude)
 {
-    mavros_msgs::AttitudeTarget msg;
-    msg.header.stamp = ros::Time::now();
-    msg.header.frame_id = "map";
-    msg.body_rate.x = cmd(0);
-    msg.body_rate.y = cmd(1);
-    msg.body_rate.z = cmd(2);
-    msg.type_mask = msg.IGNORE_PITCH_RATE + msg.IGNORE_ROLL_RATE + msg.IGNORE_YAW_RATE;
-    msg.orientation.w = target_attitude(0);
-    msg.orientation.x = target_attitude(1);
-    msg.orientation.y = target_attitude(2);
-    msg.orientation.z = target_attitude(3);
-    msg.thrust = cmd(3);
-    angularVelPub_.publish(msg);
+    // mavros_msgs::AttitudeTarget msg;
+    // msg.header.stamp = ros::Time::now();
+    // msg.header.frame_id = "map";
+    // msg.body_rate.x = cmd(0);
+    // msg.body_rate.y = cmd(1);
+    // msg.body_rate.z = cmd(2);
+    // msg.type_mask = msg.IGNORE_PITCH_RATE + msg.IGNORE_ROLL_RATE + msg.IGNORE_YAW_RATE;
+    // msg.orientation.w = target_attitude(0);
+    // msg.orientation.x = target_attitude(1);
+    // msg.orientation.y = target_attitude(2);
+    // msg.orientation.z = target_attitude(3);
+    // msg.thrust = cmd(3);
+    // angularVelPub_.publish(msg);
 }
 
 void geomControlROS::updateAndPublishPoseHistory()
 {
-    nav_msgs::Path path_msg;
-    path_msg.header.stamp = ros::Time::now();
-    path_msg.header.frame_id = "map";
-    path_msg.poses = posehistory_vector_;
-    posehistoryPub_.publish(path_msg);
+    // nav_msgs::Path path_msg;
+    // path_msg.header.stamp = ros::Time::now();
+    // path_msg.header.frame_id = "map";
+    // path_msg.poses = posehistory_vector_;
+    // posehistoryPub_.publish(path_msg);
 }
 
 void geomControlROS::pubSystemStatus() {
@@ -368,22 +492,22 @@ void geomControlROS::pubSystemStatus() {
     msg.component = 196;  // MAV_COMPONENT_ID_AVOIDANCE (standard value for companion computers)
     
     // Convert MissionState enum to appropriate status code
-    switch (mission_state_) {
-        case MissionState::WAITING_FOR_HOME_POSE:
-            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_STANDBY;
-            break;
-        case MissionState::MISSION_EXECUTION:
-            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_ACTIVE;
-            break;
-        case MissionState::LANDING:
-            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_CRITICAL;
-            break;
-        case MissionState::LANDED:
-            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_FLIGHT_TERMINATION;
-            break;
-        default:
-            msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_UNINIT;
-    }
+    // switch (mission_state_) {
+    //     case MissionState::WAITING_FOR_HOME_POSE:
+    //         msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_STANDBY;
+    //         break;
+    //     case MissionState::MISSION_EXECUTION:
+    //         msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_ACTIVE;
+    //         break;
+    //     case MissionState::LANDING:
+    //         msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_CRITICAL;
+    //         break;
+    //     case MissionState::LANDED:
+    //         msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_FLIGHT_TERMINATION;
+    //         break;
+    //     default:
+    //         msg.state = mavros_msgs::CompanionProcessStatus::MAV_STATE_UNINIT;
+    // }
     
-    systemstatusPub_.publish(msg);
+    // systemstatusPub_.publish(msg);
   }

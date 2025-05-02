@@ -71,6 +71,19 @@ private:
     ros::Time reference_request_now_;     ///< Latest target update time
     ros::Time reference_request_last_;    ///< Previous target update time
 
+    ros::Time take_off_now_;           ///< Current time for takeoof
+    ros::Time take_off_begin_;           ///< Current time for takeoof
+
+    ros::Time pre_takeoff_now_;           ///< Current time for pre-takeoff
+    ros::Time pre_takeoff_begin_;           ///< Current time for pre-takeoff
+
+
+    bool take_off_flag_ = false;         ///< Flag to indicate if takeoff is in progress
+    bool pre_takeoff_flag_ = false;         ///< Flag to indicate if pre-takeoff is in progress
+
+
+    ros::Time mavpose_receive_last_;    ///< Previous target update time
+
     std::vector<geometry_msgs::PoseStamped> posehistory_vector_; ///< History of poses for trajectory visualization
 
     // ------------------ Control Mode ------------------
@@ -128,7 +141,8 @@ public:
     /**
      * @brief Callback for receiving MAV pose (vicon/drone or mavros/local_position/pose)
      */
-    void mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon);
+    // void mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon);
+    void mavposeCallback(const geometry_msgs::PoseStamped &msg);
 
     /**
      * @brief Callback for receiving MAV twist (mavros/local_position/velocity_local)
