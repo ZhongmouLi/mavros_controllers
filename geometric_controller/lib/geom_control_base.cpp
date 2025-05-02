@@ -96,6 +96,12 @@ void geomControlBase::computeTrajectory4Takeoff(const double &current_time) {
 
     double factor = current_time/takeoff_time_;
 
+    // std::cout << "current_time is " << current_time << std::endl;
+
+    // std::cout << "factor is " << factor << std::endl;
+
+    // std::cout << "takeoff_time_ is " << takeoff_time_ << std::endl;
+
     double r, dr, ddr;
 
     if (factor<= 1)
@@ -105,23 +111,50 @@ void geomControlBase::computeTrajectory4Takeoff(const double &current_time) {
             dr = 30 * pow(current_time, 2)/pow(takeoff_time_,3)  - 60 * pow(current_time, 3)/pow(takeoff_time_,4) + 30 * pow(current_time, 4)/pow(takeoff_time_,5);
 
             ddr = 60 * current_time/pow(takeoff_time_, 3) - 180 * pow(current_time, 2)/pow(takeoff_time_, 4) + 120 * pow(current_time, 3)/pow(takeoff_time_,5);
+
+            // std::cout << "<1 r is " << factor << std::endl;
+
+            // std::cout << "<1 dr is " << dr << std::endl;
+
+            // std::cout << "<1  ddr is " << ddr << std::endl;
     }
     else
     {
              r = 1;
              dr = 0;
              ddr = 0;
+
+            //  std::cout << ">=1 r is " << factor << std::endl;
+
+            //  std::cout << ">=1 dr is " << dr << std::endl;
+ 
+            //  std::cout << ">=1  ddr is " << ddr << std::endl;             
     }
 
-    auto target_position_takeoff = home_position_ + Eigen::Vector3d(0, 0, 1) * r * takeoff_height_;
+    // std::cout << "r is " << r << std::endl;
+    // std::cout << "dr is " << dr << std::endl;
+    // std::cout << "ddr is " << ddr << std::endl;
+    // std::cout << "takeoff_height_ is " << takeoff_height_ << std::endl;
 
-    auto target_velocity_takeoff =  Eigen::Vector3d(0, 0, 1) *dr* takeoff_height_;
+    Eigen::Vector3d v_r = Eigen::Vector3d(0, 0, 1) * r ;
+    Eigen::Vector3d v_dr= Eigen::Vector3d(0, 0, 1) * dr ;
+    Eigen::Vector3d v_ddr= Eigen::Vector3d(0, 0, 1) * ddr ;
+    
+    Eigen::Vector3d target_position_takeoff = home_position_ + v_r* takeoff_height_;
 
-    auto target_acceleration_takeoff= Eigen::Vector3d(0, 0, 1) *ddr * takeoff_height_;
+    Eigen::Vector3d  target_velocity_takeoff =  v_dr * takeoff_height_;
+
+    Eigen::Vector3d  target_acceleration_takeoff= v_ddr * takeoff_height_;
+
+
+    // Eigen::Vector3d target_position_takeoff = home_position_ + Eigen::Vector3d(0, 0, 1) * r * takeoff_height_;
+
+    // Eigen::Vector3d  target_velocity_takeoff =  Eigen::Vector3d(0, 0, 1) *dr* takeoff_height_;
+
+    // Eigen::Vector3d  target_acceleration_takeoff= Eigen::Vector3d(0, 0, 1) *ddr * takeoff_height_;
 
     inputTargetPositionVelAcc(target_position_takeoff, target_velocity_takeoff, target_acceleration_takeoff);
 
-    // setMissionState(MissionState::TAKEOFF);
     
 }
 

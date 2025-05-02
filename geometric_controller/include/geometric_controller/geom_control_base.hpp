@@ -236,6 +236,7 @@
     public:
         Eigen::Vector3d targetPosition() const { return targetPos_; };
         Eigen::Vector3d targetVelocity() const { return targetVel_; };
+        Eigen::Vector3d targetAcceleration() const { return targetAcc_; };
         Eigen::Vector3d homePosition() const { return home_position_; };
         Eigen::Vector3d takeoffTargetPosition() const { return home_position_ + Eigen::Vector3d(0, 0, 1) * takeoff_height_; };
         int controlMode() const { return ctrl_mode_; };
