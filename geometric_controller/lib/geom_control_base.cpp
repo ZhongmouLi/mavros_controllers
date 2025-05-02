@@ -2,14 +2,14 @@
 
 
 
-
 const Eigen::Vector3d geomControlBase::g_{0.0, 0.0, -9.8}; // gravity vector
 
 geomControlBase::~geomControlBase() {
     // Destructor
   }
 
-geomControlBase::geomControlBase():fail_detec_(false), ctrl_enable_(true), landing_commanded_(false), feedthrough_enable_(false)
+geomControlBase::geomControlBase():feedthrough_enable_(false), fail_detec_(false), ctrl_enable_(true),
+landing_commanded_(false) 
 {
     home_position_set_ = false;
 }
@@ -75,7 +75,7 @@ void geomControlBase::computeControlCmds4PreTakeoff(){
 
     // ROS_INFO_STREAM_THROTTLE(2, "home_position is "<< home_position_);
     if (home_position_set_) {
-        Eigen::Vector3d desired_acc = controlPosition(home_position_, Eigen::MatrixXd::Zero(3, 1), Eigen::MatrixXd::Zero(3, 1));
+        Eigen::Vector3d desired_acc = controlPosition(home_position_,  Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
     
         computeBodyRateCmd(cmdBodyRate_, desired_acc);
 
@@ -83,7 +83,7 @@ void geomControlBase::computeControlCmds4PreTakeoff(){
     else {
         std::cout << "home position is not set" << std::endl;
 
-        
+        return;
     }
         
 
@@ -94,6 +94,61 @@ void geomControlBase::computeControlCmds4PreTakeoff(){
     }
 
 }
+
+
+void geomControlBase::computeTrajectory4Takeoff(const double &current_time) {
+
+
+
+    double factor = current_time/takeoff_time_;
+
+    double r, dr, ddr;
+
+    if (factor<= 1)
+    {
+            r = 10 * pow(factor, 3) -15 * pow(factor, 4) + 6 * pow(factor, 5);
+
+            dr = 30 * pow(current_time, 2)/pow(takeoff_time_,3)  - 60 * pow(current_time, 3)/pow(takeoff_time_,4) + 30 * pow(current_time, 4)/pow(takeoff_time_,5);
+
+            ddr = 60 * current_time/pow(takeoff_time_, 3) - 180 * pow(current_time, 2)/pow(takeoff_time_, 4) + 120 * pow(current_time, 3)/pow(takeoff_time_,5);
+    }
+    else
+    {
+             r = 1;
+             dr = 0;
+             ddr = 0;
+    }
+
+    auto target_position_takeoff = home_position_ + Eigen::Vector3d(0, 0, 1) * r * takeoff_height_;
+
+    auto target_velocity_takeoff =  Eigen::Vector3d(0, 0, 1) *dr* takeoff_height_;
+
+    auto target_acceleration_takeoff= Eigen::Vector3d(0, 0, 1) *ddr * takeoff_height_;
+
+    inputTargetPositionVelAcc(target_position_takeoff, target_velocity_takeoff, target_acceleration_takeoff);
+
+    // setMissionState(MissionState::TAKEOFF);
+    
+}
+
+void geomControlBase::computeControlCmds4Takeoff() {
+
+    if (mission_state_ != MissionState::TAKEOFF) {
+        return;
+    }
+
+    Eigen::Vector3d desired_acc;
+  
+    if (feedthrough_enable_) {
+        desired_acc = targetAcc_;
+    } else {
+        desired_acc = controlPosition(targetPos_, targetVel_, targetAcc_);
+    }
+
+    computeBodyRateCmd(cmdBodyRate_, desired_acc);
+    
+}
+
 
 // do mission execution
 // this function is called when the drone is in mission execution state

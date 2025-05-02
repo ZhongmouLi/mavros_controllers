@@ -132,6 +132,7 @@
     public:
          enum class MissionState {
              WAITING_FOR_HOME_POSE,
+             TAKEOFF,
              MISSION_EXECUTION,
              LANDING,
              LANDED
@@ -216,12 +217,25 @@
             }
             void setMaxFeedbackAcceleration(double max_acc) { max_fb_acc_ = max_acc; }     
 
+            void computeTrajectory4Takeoff(const double &current_time);
+
+            void computeControlCmds4Takeoff();
+
+            void setTakeoffHeightAndTime(const double &takeoff_height, const double &takeoff_time) { takeoff_height_ = takeoff_height; takeoff_time_ = takeoff_time;};
+         
+ 
+    private:
+       
+            double takeoff_height_ = 0.5;
+
+            double takeoff_time_ = 5.0; // time to take off
+
     public:
-        Eigen::Vector3d targetPosition() const { return targetPos_; }
-        Eigen::Vector3d targetVelocity() const { return targetVel_; }
-        Eigen::Vector3d homePosition() const { return home_position_; }
-        int controlMode() const { return ctrl_mode_; }
-        void setControlMode(int mode) { ctrl_mode_ = mode; }
+        Eigen::Vector3d targetPosition() const { return targetPos_; };
+        Eigen::Vector3d targetVelocity() const { return targetVel_; };
+        Eigen::Vector3d homePosition() const { return home_position_; };
+        int controlMode() const { return ctrl_mode_; };
+        void setControlMode(int mode) { ctrl_mode_ = mode; };
 
 
      private:
