@@ -131,6 +131,7 @@
 
     public:
          enum class MissionState {
+             ARM_OFFBOARD,
              PRE_TAKEOFF,
              TAKEOFF,
              MISSION_EXECUTION,
@@ -149,7 +150,7 @@
          };
 
     protected: // Allow derived classes to access state
-         MissionState mission_state_ = MissionState::PRE_TAKEOFF;
+         MissionState mission_state_ = MissionState::ARM_OFFBOARD;
 
          FlightArmingState flight_arming_state_ = FlightArmingState::DISARMED;
 

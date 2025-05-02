@@ -1,4 +1,5 @@
 #include "geometric_controller/geom_control_ros.hpp"
+#include <algorithm>
 #include <fstream>
 
 geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private)
@@ -187,8 +188,16 @@ void geomControlROS::mavstateCallback(const mavros_msgs::State::ConstPtr& msg)
     };
 
 
-    ROS_INFO_STREAM_THROTTLE(2.0, "Armed state "  << current_state_.armed );
-    ROS_INFO_STREAM_THROTTLE(2.0, "Mode state "  << current_state_.mode );
+    if (current_state_.armed == true) 
+    {
+        ROS_INFO_STREAM_THROTTLE(5.0, "Armed state: True ");
+    }
+    else
+    {
+        ROS_INFO_STREAM_THROTTLE(5.0, "Armed state: False ");
+    };
+
+    ROS_INFO_STREAM_THROTTLE(5.0, "Mode state "  << current_state_.mode );
 }
 
 // void geometricCtrl::mavposeCallback(const geometry_msgs::PoseStamped &msg) {
@@ -290,17 +299,32 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
 {
     switch (mission_state_) {
 
+    case MissionState::ARM_OFFBOARD: {
+        // Check if home position is set, vehicle is armed, and OFFBOARD mode is enabled
+        if (!isHomePositionSet()) {
+            ROS_INFO_THROTTLE(2.0, "ARM_OFFBOARD: waiting for home position...");
+            break;
+        }
+
+        // in simulation, we sent target position to the PX4 controller
+        pubTargetPose2PX4Controller(homePosition());
+
+        // set the mission state to PRE_TAKEOFF
+        if (flight_arming_state_ == FlightArmingState::DISARMED || flight_offboard_state_ == FlightOffboardState::OFFBOARD_DISABLED) {
+            ROS_INFO_THROTTLE(2.0, "ARM_OFFBOARD: waiting for Arm and Offboard...");
+        }
+        else {
+            ROS_INFO("ARM_OFFBOARD to PRE_TAKEOFF");
+            setMissionState(MissionState::PRE_TAKEOFF);
+        }
+
+        break;
+
+    }    
+
     case MissionState::PRE_TAKEOFF:{
 
 
-        pubTargetPose2PX4Controller(homePosition());
-
-
-        // check if home position is set, vehicle is armed, and OFFBOARD mode is enabled
-        if (!isHomePositionSet()) {
-            ROS_INFO_THROTTLE(1.0, "PRE_TAKEOFF: waiting for home position...");
-            break;
-        }
         if (flight_arming_state_ == FlightArmingState::DISARMED) {
             ROS_INFO_THROTTLE(1.0, "PRE_TAKEOFF: waiting for vehicle to be armed...");
             break;
@@ -361,19 +385,11 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         
             // Compute the target position, velocity, and acceleration for takeoff
             computeTrajectory4Takeoff(take_off_current_step);
-            ROS_INFO_STREAM_THROTTLE(0.5, "TAKEOFF: time step  is " << take_off_current_step);
+            // ROS_INFO_STREAM_THROTTLE(0.5, "TAKEOFF: time step  is " << take_off_current_step);
             
             // computeControlCmds4Takeoff();
             computeControlCmds4Takeoff();
         
-            // for tests
-            // write code to ros display the target position, target velocity, and target acceleration one by one
-            // ROS_INFO_STREAM_THROTTLE(1.0, "TAKEOFF: target position is " << takeoffTargetPosition().transpose() << " and target velocity is " << takeoffTargetVelocity().transpose() << " and target acceleration is " << takeoffTargetAcceleration().transpose());
-            ROS_INFO_STREAM_THROTTLE(0.5, "TAKEOFF: target position is " << targetPosition().transpose());
-            ROS_INFO_STREAM_THROTTLE(0.5, "TAKEOFF: target velocity is " << targetVelocity() .transpose());
-            ROS_INFO_STREAM_THROTTLE(0.5, "TAKEOFF: target acceleration is " << targetAcceleration().transpose());
-
-
 
             pubTargetPose2PX4Controller(targetPosition());
 
@@ -387,7 +403,7 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
             }
             else {
                 // Publish the reference pose for visualization
-                ROS_INFO_STREAM_THROTTLE(1.0, "TAKEOFF: takeoff in progress and target post is "  << takeoffTargetPosition().transpose() << " and current error is " << error);
+                ROS_INFO_STREAM_THROTTLE(2.0, "TAKEOFF: takeoff in progress and target post is "  << takeoffTargetPosition().transpose() << " and current error is " << error);
             }
             break;
         }     
@@ -406,7 +422,7 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         double mission_step = (mission_now_ - mission_begin_).toSec();
 
 
-        ROS_INFO_STREAM_THROTTLE(1.0, "Mission: begins for  " << mission_step << " seconds");
+        ROS_INFO_STREAM_THROTTLE(2.0, "Mission: begins for  " << mission_step << " seconds");
         pubTargetPose2PX4Controller(targetPosition());
 
 
@@ -450,13 +466,13 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
 {
     if (sim_enable_) {
         // Simulation mode logic for arming and enabling OFFBOARD
-        ROS_INFO_THROTTLE(1.0, "Simulation: arm and OFFBOARD mode enabled automatically");
+        ROS_INFO_THROTTLE(5.0, "Simulation: arm and OFFBOARD mode enabled automatically");
         // First try to switch to OFFBOARD mode if not already in it
         if (current_state_.mode != "OFFBOARD" && 
             (ros::Time::now() - last_request_ > ros::Duration(5.0))) {
             offb_set_mode_.request.custom_mode = "OFFBOARD";
             if (set_mode_client_.call(offb_set_mode_) && offb_set_mode_.response.mode_sent) {
-                ROS_INFO("Offboard enabled");
+                ROS_INFO("Offboard request is sent");
             }
             last_request_ = ros::Time::now();
         } 
@@ -465,7 +481,7 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
                  (ros::Time::now() - last_request_ > ros::Duration(5.0))) {
             arm_cmd_.request.value = true;
             if (arming_client_.call(arm_cmd_) && arm_cmd_.response.success) {
-                ROS_INFO("Vehicle armed");
+                ROS_INFO("Arming request is sent");
             }
             last_request_ = ros::Time::now();
         }
@@ -473,7 +489,7 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
     else {
         // Real hardware mode - don't automatically arm or change modes
         // Any hardware-specific status updates can go here
-        ROS_INFO("Waiting for being armed and OFFBOARD mode using TRANSMITTER.");
+        ROS_INFO_THROTTLE(5.0, "Waiting for being armed and OFFBOARD mode using TRANSMITTER.");
     }
     
     // // Update the state variables based on current_state_ regardless of simulation mode
