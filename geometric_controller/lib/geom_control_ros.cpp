@@ -184,7 +184,11 @@ void geomControlROS::mavstateCallback(const mavros_msgs::State::ConstPtr& msg)
     } else {
         setFlightArmingState(FlightArmingState::DISARMED);
         setFlightOffboardState(FlightOffboardState::OFFBOARD_DISABLED);
-    }
+    };
+
+
+    ROS_INFO_STREAM_THROTTLE(2.0, "Armed state "  << current_state_.armed );
+    ROS_INFO_STREAM_THROTTLE(2.0, "Mode state "  << current_state_.mode );
 }
 
 // void geometricCtrl::mavposeCallback(const geometry_msgs::PoseStamped &msg) {
@@ -288,6 +292,10 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
 
     case MissionState::PRE_TAKEOFF:{
 
+
+        pubTargetPose2PX4Controller(homePosition());
+
+
         // check if home position is set, vehicle is armed, and OFFBOARD mode is enabled
         if (!isHomePositionSet()) {
             ROS_INFO_THROTTLE(1.0, "PRE_TAKEOFF: waiting for home position...");
@@ -324,6 +332,9 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
 
             ROS_INFO_STREAM_THROTTLE(1.0, "PRE_TAKEOFF: spinning up motors and preparing for takeoff for " << (5 - pre_takeoff_current_step) << " seconds");
 
+            // for tests
+            pubTargetPose2PX4Controller(targetPosition());
+
         } else {
             // set the mission state to TAKEOFF
             setMissionState(MissionState::TAKEOFF);
@@ -350,14 +361,26 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         
             // Compute the target position, velocity, and acceleration for takeoff
             computeTrajectory4Takeoff(take_off_current_step);
-
+            ROS_INFO_STREAM_THROTTLE(0.5, "TAKEOFF: time step  is " << take_off_current_step);
+            
             // computeControlCmds4Takeoff();
             computeControlCmds4Takeoff();
         
+            // for tests
+            // write code to ros display the target position, target velocity, and target acceleration one by one
+            // ROS_INFO_STREAM_THROTTLE(1.0, "TAKEOFF: target position is " << takeoffTargetPosition().transpose() << " and target velocity is " << takeoffTargetVelocity().transpose() << " and target acceleration is " << takeoffTargetAcceleration().transpose());
+            ROS_INFO_STREAM_THROTTLE(0.5, "TAKEOFF: target position is " << targetPosition().transpose());
+            ROS_INFO_STREAM_THROTTLE(0.5, "TAKEOFF: target velocity is " << targetVelocity() .transpose());
+            ROS_INFO_STREAM_THROTTLE(0.5, "TAKEOFF: target acceleration is " << targetAcceleration().transpose());
+
+
+
+            pubTargetPose2PX4Controller(targetPosition());
 
             // check if takeoff is completed by checking the error between the target position and current position
             // if yes, set the mission state to MISSION_EXECUTION
             auto error = (takeoffTargetPosition() - mavPost()).norm();
+
             if ((take_off_current_step >= (takeoff_time_ + 5)) && (error < 0.5)) {
                 ROS_INFO("TAKEOFF: completed");
                 setMissionState(MissionState::MISSION_EXECUTION);
@@ -370,6 +393,23 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         }     
         
     case MissionState::MISSION_EXECUTION:{
+
+        // Check if takeoff has been initiated
+        if (!mission_flag_) {
+                mission_begin_ = ros::Time::now();
+                mission_flag_ = true;
+                ROS_INFO("TAKEOFF initiated");
+                break;
+        }
+
+        mission_now_ = ros::Time::now();
+        double mission_step = (mission_now_ - mission_begin_).toSec();
+
+
+        ROS_INFO_STREAM_THROTTLE(1.0, "Mission: begins for  " << mission_step << " seconds");
+        pubTargetPose2PX4Controller(targetPosition());
+
+
         computeControlCmds4Mission();
         
         // Publish control commands
@@ -410,7 +450,7 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
 {
     if (sim_enable_) {
         // Simulation mode logic for arming and enabling OFFBOARD
-        
+        ROS_INFO_THROTTLE(1.0, "Simulation: arm and OFFBOARD mode enabled automatically");
         // First try to switch to OFFBOARD mode if not already in it
         if (current_state_.mode != "OFFBOARD" && 
             (ros::Time::now() - last_request_ > ros::Duration(5.0))) {
@@ -436,28 +476,49 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
         ROS_INFO("Waiting for being armed and OFFBOARD mode using TRANSMITTER.");
     }
     
-    // Update the state variables based on current_state_ regardless of simulation mode
-    // Update the state variables based on current_state_
-    if (current_state_.armed) {
-        setFlightArmingState(FlightArmingState::ARMED);
-    } else {
-        setFlightArmingState(FlightArmingState::DISARMED);
-    }
+    // // Update the state variables based on current_state_ regardless of simulation mode
+    // // Update the state variables based on current_state_
+    // if (current_state_.armed) {
+    //     setFlightArmingState(FlightArmingState::ARMED);
+    // } else {
+    //     setFlightArmingState(FlightArmingState::DISARMED);
+    // }
 
-    // Set offboard state based on flight mode, independent of arming status
-    if (current_state_.mode == "OFFBOARD") {
-        setFlightOffboardState(FlightOffboardState::OFFBOARD_ENABLED);
-    } else {
-        setFlightOffboardState(FlightOffboardState::OFFBOARD_DISABLED);
-    }
-    // Publish system status
-    pubSystemStatus();
+    // // Set offboard state based on flight mode, independent of arming status
+    // if (current_state_.mode == "OFFBOARD") {
+    //     setFlightOffboardState(FlightOffboardState::OFFBOARD_ENABLED);
+    // } else {
+    //     setFlightOffboardState(FlightOffboardState::OFFBOARD_DISABLED);
+    // }
+    // // Publish system status
+    // pubSystemStatus();
 }
 
 void geomControlROS::pubReferencePose(const Eigen::Vector3d& target_position, const Eigen::Vector4d& target_attitude)
 {
     // lockstep
 }
+
+
+void geomControlROS::pubTargetPose2PX4Controller(const Eigen::Vector3d& target_position)
+{
+    // lockstep
+    geometry_msgs::PoseStamped pose;
+    pose.pose.position.x = target_position[0];
+    pose.pose.position.y = target_position[1];
+    pose.pose.position.z = target_position[2];
+    pose.pose.orientation.w = 1.0;
+    pose.pose.orientation.x = 0.0;
+    pose.pose.orientation.y = 0.0;
+    pose.pose.orientation.z = 0.0;
+    pose.header.stamp = ros::Time::now();
+    pose.header.frame_id = "map";  // Ensure consistent frame, if needed
+    target_pose_pub_.publish(pose);
+
+    ROS_INFO_STREAM_THROTTLE(1.0, "Publishing target pose to PX4 controller: " << target_position.transpose());
+
+}
+
 
 void geomControlROS::pubControlCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude)
 {

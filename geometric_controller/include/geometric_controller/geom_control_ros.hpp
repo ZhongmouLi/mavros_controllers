@@ -82,6 +82,12 @@ private:
     bool pre_takeoff_flag_ = false;         ///< Flag to indicate if pre-takeoff is in progress
 
 
+    bool mission_flag_ = false;         ///< Flag to indicate if takeoff is in progress
+
+    ros::Time mission_now_;           ///< Current time for pre-takeoff
+    ros::Time mission_begin_;           ///< Current time for pre-takeoff
+        
+    
     ros::Time mavpose_receive_last_;    ///< Previous target update time
 
     std::vector<geometry_msgs::PoseStamped> posehistory_vector_; ///< History of poses for trajectory visualization
@@ -111,6 +117,8 @@ private:
      */    
     
     void pubSystemStatus();
+
+    void pubTargetPose2PX4Controller(const Eigen::Vector3d& target_position);
 
 
 public:
