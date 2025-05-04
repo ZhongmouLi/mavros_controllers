@@ -357,7 +357,7 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
             ROS_INFO_STREAM_THROTTLE(1.0, "PRE_TAKEOFF: spinning up motors and preparing for takeoff for " << (5 - pre_takeoff_current_step) << " seconds");
 
             // for tests
-            pubTargetPose2PX4Controller(targetPosition());
+            // pubTargetPose2PX4Controller(targetPosition());
 
         } else {
             // set the mission state to TAKEOFF
@@ -391,14 +391,16 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
             computeControlCmds4Takeoff();
         
 
-            pubTargetPose2PX4Controller(targetPosition());
+            // pubTargetPose2PX4Controller(targetPosition());
+            pubControlCommands(bodyRateCommand(), attitudeCommand() ); // Using identity quaternion for now
+            
 
             // check if takeoff is completed by checking the error between the target position and current position
             // if yes, set the mission state to MISSION_EXECUTION
             auto error = (takeoffTargetPosition() - mavPost()).norm();
 
             if ((take_off_current_step >= (takeoff_time_ + 5)) && (error < 0.5)) {
-                ROS_INFO("TAKEOFF: completed");
+                ROS_INFO("TAKEOFF 2 MISSION");
                 setMissionState(MissionState::MISSION_EXECUTION);
             }
             else {
@@ -414,7 +416,7 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         if (!mission_flag_) {
                 mission_begin_ = ros::Time::now();
                 mission_flag_ = true;
-                ROS_INFO("TAKEOFF initiated");
+                ROS_INFO("MISSION initiated");
                 break;
         }
 
@@ -423,7 +425,9 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
 
 
         ROS_INFO_STREAM_THROTTLE(2.0, "Mission: begins for  " << mission_step << " seconds");
-        pubTargetPose2PX4Controller(targetPosition());
+
+        // for tests
+        // pubTargetPose2PX4Controller(targetPosition());
 
 
         computeControlCmds4Mission();
@@ -538,19 +542,19 @@ void geomControlROS::pubTargetPose2PX4Controller(const Eigen::Vector3d& target_p
 
 void geomControlROS::pubControlCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude)
 {
-    // mavros_msgs::AttitudeTarget msg;
-    // msg.header.stamp = ros::Time::now();
-    // msg.header.frame_id = "map";
-    // msg.body_rate.x = cmd(0);
-    // msg.body_rate.y = cmd(1);
-    // msg.body_rate.z = cmd(2);
-    // msg.type_mask = msg.IGNORE_PITCH_RATE + msg.IGNORE_ROLL_RATE + msg.IGNORE_YAW_RATE;
-    // msg.orientation.w = target_attitude(0);
-    // msg.orientation.x = target_attitude(1);
-    // msg.orientation.y = target_attitude(2);
-    // msg.orientation.z = target_attitude(3);
-    // msg.thrust = cmd(3);
-    // angularVelPub_.publish(msg);
+    mavros_msgs::AttitudeTarget msg;
+    msg.header.stamp = ros::Time::now();
+    msg.header.frame_id = "map";
+    msg.body_rate.x = cmd(0);
+    msg.body_rate.y = cmd(1);
+    msg.body_rate.z = cmd(2);
+    msg.type_mask = msg.IGNORE_PITCH_RATE + msg.IGNORE_ROLL_RATE + msg.IGNORE_YAW_RATE;
+    msg.orientation.w = target_attitude(0);
+    msg.orientation.x = target_attitude(1);
+    msg.orientation.y = target_attitude(2);
+    msg.orientation.z = target_attitude(3);
+    msg.thrust = cmd(3);
+    angularVelPub_.publish(msg);
 }
 
 void geomControlROS::updateAndPublishPoseHistory()
