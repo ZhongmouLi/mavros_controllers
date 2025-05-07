@@ -36,13 +36,21 @@
  * @author Jaeyoung Lim <jalim@ethz.ch>
  */
 
-#include "trajectory_publisher/trajectoryPublisher.h"
+#include "trajectory_publisher/trajectory_generator_ros.hpp"
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "trajectory_publisher");
   ros::NodeHandle nh("");
   ros::NodeHandle nh_private("~");
-  trajectoryPublisher referencePublisher(nh, nh_private);
+
+  // Set log level to Debug
+  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug)) {
+        ros::console::notifyLoggerLevelsChanged();
+    };
+
+  TrajectoryGeneratorROS referencePublisher(nh, nh_private);
   ros::spin();
   return 0;
 }
+
+

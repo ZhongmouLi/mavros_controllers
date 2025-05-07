@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(trajectory_publisher)
+project(trajectory_generator)
 
-add_definitions(-std=c++11)
+add_definitions(-std=c++17)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -24,19 +24,41 @@ include_directories(
   ${Boost_INCLUDE_DIR}
   ${catkin_INCLUDE_DIRS}
 )
+############
+# LIBRARIES #
+############
+add_library(${PROJECT_NAME}_base
+        lib/base/trajectory.cpp
+        lib/base/polynomialtrajectory.cpp
+        lib/base/shapetrajectory.cpp
+)
+target_compile_options(${PROJECT_NAME}_base PRIVATE -std=c++17 -Wall -Wextra)
+
+target_link_libraries(${PROJECT_NAME}_base  ${catkin_LIBRARIES})
+
+add_library(${PROJECT_NAME}_lib
+        lib/trajectory_generator.cpp
+)
+target_compile_options(${PROJECT_NAME}_lib PRIVATE -std=c++17 -Wall -Wextra)
+
+target_link_libraries(${PROJECT_NAME}_lib  ${catkin_LIBRARIES} ${PROJECT_NAME}_base)
+
+add_library(${PROJECT_NAME}_ros
+        lib/trajectory_generator_ros.cpp
+)
+target_compile_options(${PROJECT_NAME}_ros PRIVATE -std=c++17 -Wall -Wextra)
+
+target_link_libraries(${PROJECT_NAME}_ros  ${catkin_LIBRARIES} ${PROJECT_NAME}_lib)
 
 ############
 # BINARIES #
 ############
-add_executable(trajectory_publisher
-        src/trajectoryPublisher.cpp
+add_executable(${PROJECT_NAME}_node
         src/trajectoryPublisher_node.cpp
-        src/trajectory.cpp
-        src/polynomialtrajectory.cpp
-        src/shapetrajectory.cpp
 )
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+add_dependencies(${PROJECT_NAME}_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME}_node ${catkin_LIBRARIES} ${PROJECT_NAME}_ros)
+
 ##########
 # EXPORT #
 ##########

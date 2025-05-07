@@ -1,0 +1,79 @@
+
+
+
+#pragma once
+
+#include <stdio.h>
+#include <Eigen/Dense>
+#include <cstdlib>
+#include <sstream>
+#include <string>
+
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
+#include <mavconn/mavlink_dialect.h>
+#include <mavros_msgs/GlobalPositionTarget.h>
+#include <mavros_msgs/PositionTarget.h>
+#include <nav_msgs/Path.h>
+#include <ros/ros.h>
+#include <std_msgs/Int32.h>
+#include <std_msgs/String.h>
+#include <std_srvs/SetBool.h>
+#include "controller_msgs/FlatTarget.h"
+#include "trajectory_publisher/trajectory_generator.hpp"
+
+
+
+class TrajectoryGeneratorROS {
+private:
+    // ROS node handles
+    ros::NodeHandle nh_;             // Global (non-private) node handle
+    ros::NodeHandle nh_private_;     // Private node handle (~ namespace)
+
+    // ROS publishers
+    ros::Publisher reference_pub_;        // Publishes geometry_msgs::TwistStamped with position + velocity
+    ros::Publisher raw_reference_pub_;    // Publishes mavros_msgs::PositionTarget with full raw setpoint
+
+    // ROS service server
+    ros::ServiceServer start_service_;    // Service to start/stop trajectory generation
+
+    // ROS timers
+    ros::Timer loop_timer_;   // Timer for slower loop (e.g., visualization, updates)
+    ros::Timer ref_timer_;    // Timer for fast loop (publishing references at high rate)
+
+    // Trajectory generator
+    std::shared_ptr<TrajectoryGenerator> generator_;  // Smart pointer holding the trajectory generator
+
+    // Current target state (calculated at each time step)
+    Eigen::Vector3d p_targ_;  // Target position [x, y, z]
+    Eigen::Vector3d v_targ_;  // Target velocity [vx, vy, vz]
+    Eigen::Vector3d a_targ_;  // Target acceleration [ax, ay, az]
+
+    // Circle trajectory configuration
+    Eigen::Vector3d initial_post_{0,0,1};  // Center position of the circle
+    Eigen::Vector3d axis_;    // Axis of rotation (normal vector)
+    double radius_;           // Radius of the circle
+    double omega_;            // Angular speed (rad/s)
+
+    // Timing
+    ros::Time start_time_;    // Time when the trajectory was started
+
+    // Control flag
+    bool is_active_;          // Whether the system is currently active (publishing) or paused
+
+public:
+    // Constructor: initializes publishers, services, timers, and generator
+    TrajectoryGeneratorROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+
+    // Service callback: handles /start service requests to start or stop publishing
+    bool startCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
+
+    // Updates the current position, velocity, and acceleration based on elapsed time
+    void updateReference();
+
+    // Slow loop timer callback (optional use for visualization or future extensions)
+    void loopCallback(const ros::TimerEvent&);
+
+    // Fast loop timer callback: publishes reference states (position, velocity, acceleration)
+    void refCallback(const ros::TimerEvent&);
+};
