@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(geometric_controller)
+project(adaptive_controller)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -55,30 +55,45 @@ target_compile_options(${PROJECT_NAME}_base PRIVATE -std=c++17 -Wall -Wextra)
 
 target_link_libraries(${PROJECT_NAME}_base  ${catkin_LIBRARIES})
 
+
+
+# adaptive gain laibrary
+add_library(${PROJECT_NAME}_adaptive_gain
+  lib/lib_gain_learning.cpp 
+)
+target_compile_options(${PROJECT_NAME}_adaptive_gain PRIVATE -std=c++17 -Wall -Wextra)
+target_include_directories(${PROJECT_NAME}_adaptive_gain PUBLIC
+  include
+)
+target_link_libraries(${PROJECT_NAME}_adaptive_gain  ${catkin_LIBRARIES} )
+
+
+
 # geometric_controller_ros class
 add_library(${PROJECT_NAME}_ros
-  lib/geom_control_ros.cpp 
+  lib/adaptive_control_ros.cpp 
 )
+target_compile_options(${PROJECT_NAME}_ros PRIVATE -std=c++17 -Wall -Wextra)
+
 target_include_directories(${PROJECT_NAME}_ros PUBLIC
   include
   ${catkin_INCLUDE_DIRS}
 )
-target_compile_options(${PROJECT_NAME}_ros PRIVATE -std=c++17 -Wall -Wextra)
-
-target_link_libraries(${PROJECT_NAME}_ros ${catkin_LIBRARIES} ${PROJECT_NAME}_base)
+target_link_libraries(${PROJECT_NAME}_ros ${catkin_LIBRARIES} ${PROJECT_NAME}_adaptive_gain ${PROJECT_NAME}_base)
 
 
 ############
 # BINARIES #
 ############
-add_executable(geometric_controller_node src/gem_control_node.cpp)
+add_executable(${PROJECT_NAME}_node src/gem_control_node.cpp)
 
-add_dependencies(geometric_controller_node
+add_dependencies(${PROJECT_NAME}_node
   ${PROJECT_NAME}_ros
   ${PROJECT_NAME}_base
+  ${PROJECT_NAME}_adaptive_gain
 )
 
-target_link_libraries(geometric_controller_node
+target_link_libraries(${PROJECT_NAME}_node
   ${PROJECT_NAME}_ros
   ${catkin_LIBRARIES}
 )

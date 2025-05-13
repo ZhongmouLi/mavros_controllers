@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>geometric_controller</name>
+  <name>adaptive_controller</name>
   <version>0.0.0</version>
   <description>Polynomial Trajectory Tracking controller using a geometric controller</description>
 

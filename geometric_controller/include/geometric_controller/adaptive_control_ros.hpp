@@ -3,6 +3,7 @@
 
 #include "geometric_controller/geom_control_base.hpp"
 #include "geometric_controller/common_ros.hpp"
+#include "geometric_controller/lib_gain_learning.hpp"
 #include <ros/ros.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -22,7 +23,7 @@
  * 
  * It handles all ROS publishers, subscribers, services, and timers.
  */
-class geomControlROS : public geomControlBase
+class adaptiveControlROS : public geomControlBase
 {
     
 private:
@@ -97,6 +98,9 @@ private:
 
     // ------------------ Control Methods ------------------
 
+    // adaptive gain learning
+    std::shared_ptr<AdaptiveGain> ptr_adaptive_gain = nullptr;
+
     /**
      * @brief Publish reference pose for visualization
      */
@@ -121,18 +125,20 @@ private:
     void pubTargetPose2PX4Controller(const Eigen::Vector3d& target_position);
 
 
+
+
 public:
     /**
      * @brief Constructor
      * @param nh ROS public node handle
      * @param nh_private ROS private node handle
      */
-    geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+    adaptiveControlROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
 
     /**
      * @brief Destructor
      */
-    ~geomControlROS();
+    ~adaptiveControlROS();
 
     // ------------------ ROS Subscriber Callbacks ------------------
 
@@ -185,4 +191,8 @@ public:
      * @brief System status monitoring timer callback (1s)
      */
     void statusloopCallback(const ros::TimerEvent& event);
+
+
+    // ------------------ adaptive gain update ------------------
+    bool updatePostControlGain();
 };
