@@ -18,6 +18,7 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     // ------------------ Setup Publishers ------------------
     angularVelPub_ = nh_.advertise<mavros_msgs::AttitudeTarget>("command/bodyrate_command", 1);
     referencePosePub_ = nh_.advertise<geometry_msgs::PoseStamped>("reference/pose", 1);
+    // to remove
     target_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
     posehistoryPub_ = nh_.advertise<nav_msgs::Path>("geometric_controller/path", 10);
     systemstatusPub_ = nh_.advertise<mavros_msgs::CompanionProcessStatus>("mavros/companion_process/status", 1);
@@ -592,3 +593,42 @@ void geomControlROS::pubSystemStatus() {
     
     // systemstatusPub_.publish(msg);
   }
+
+
+void geomControlROS::dynamicReconfigureCallback(geometric_controller::GeometricControllerConfig &config,
+                                               uint32_t level) {
+
+  // obtain the current values of controller gains
+  Eigen::Vector3d Kpos = kPPosController();
+  Eigen::Vector3d Kvel = kVPosController();
+  double max_feedback_acc = maxFeedbackAcceleration();
+
+  
+  if(max_feedback_acc != config.max_acc) {
+      max_feedback_acc = config.max_acc;
+      setMaxFeedbackAcceleration(max_feedback_acc);
+      ROS_INFO("Reconfigure request : max_feedback_acc  = %.2f  ", config.max_acc);
+    }
+    if (Kpos[0] != -config.Kp_x) {
+        Kpos[0] = -config.Kp_x;
+        ROS_INFO("Reconfigure request : Kp_x  = %.2f  ", config.Kp_x);
+    } else if (Kpos[1] != -config.Kp_y) {
+        Kpos[1] = -config.Kp_y;
+        ROS_INFO("Reconfigure request : Kp_y  = %.2f  ", config.Kp_y);
+    } else if (Kpos[2] != -config.Kp_z) {
+        Kpos[2] = -config.Kp_z;
+        ROS_INFO("Reconfigure request : Kp_z  = %.2f  ", config.Kp_z);
+    } else if (Kvel[0] != -config.Kv_x) {
+        Kvel[0] = -config.Kv_x;
+        ROS_INFO("Reconfigure request : Kv_x  = %.2f  ", config.Kv_x);
+    } else if (Kvel[1] != -config.Kv_y) {
+        Kvel[1] = -config.Kv_y;
+        ROS_INFO("Reconfigure request : Kv_y =%.2f  ", config.Kv_y);
+    } else if (Kvel[2] != -config.Kv_z) {
+        Kvel[2] = -config.Kv_z;
+        ROS_INFO("Reconfigure request : Kv_z  = %.2f  ", config.Kv_z);
+    }
+
+    setPostControlPGains(Kpos);
+    setPostControlDGains(Kvel);
+}  
