@@ -40,7 +40,8 @@
 
  #include "geometric_controller/geom_control_ros.hpp"
  #include <ros/ros.h>
- 
+ #include <memory>
+
  int main(int argc, char** argv) {
      ros::init(argc, argv, "geometric_controller");
      
@@ -55,13 +56,19 @@
      
      // Create the controller instance
      ROS_INFO("Starting Geometric Controller ROS Node");
-     geomControlROS geometricController(nh, nh_private);
+    //  geomControlROS geometricController(nh, nh_private);
      
      // Note: Dynamic reconfigure is omitted in this implementation
      // If needed, it can be added later with appropriate modifications
-     
-     // Spin and let the callbacks do their work
-     ros::spin();
-     
-     return 0;
+     std::unique_ptr<geomControlROS> geometricController = std::make_unique<geomControlROS>(nh, nh_private);
+
+    dynamic_reconfigure::Server<geometric_controller::GeometricControllerConfig> srv;
+    dynamic_reconfigure::Server<geometric_controller::GeometricControllerConfig>::CallbackType f;
+
+    // Use *geometricController to get reference to object
+    f = boost::bind(&geomControlROS::dynamicReconfigureCallback, geometricController.get(), _1, _2);
+
+    srv.setCallback(f);
+    ros::spin();
+    return 0;
  }

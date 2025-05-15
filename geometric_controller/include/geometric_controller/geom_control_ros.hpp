@@ -1,8 +1,9 @@
 // geom_control_ros.hpp
 #pragma once
 
-#include "geometric_controller/geom_control_base.hpp"
-#include "geometric_controller/common_ros.hpp"
+
+#include <dynamic_reconfigure/server.h>
+#include <geometric_controller/GeometricControllerConfig.h>
 #include <ros/ros.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -15,7 +16,8 @@
 #include <nav_msgs/Path.h>
 #include <std_srvs/SetBool.h>
 #include <std_msgs/Float32.h>
-#include <vector>
+#include "geometric_controller/geom_control_base.hpp"
+#include "geometric_controller/common_ros.hpp"
 
 /**
  * @brief ROS wrapper class for geomControlBase
@@ -56,6 +58,7 @@ private:
 
     ros::ServiceServer ctrltriggerServ_; ///< Service to trigger controller (trigger_rlcontroller)
     ros::ServiceServer land_service_;    ///< Service to command landing (land)
+
 
     // ------------------ Timers ------------------
 
@@ -185,4 +188,8 @@ public:
      * @brief System status monitoring timer callback (1s)
      */
     void statusloopCallback(const ros::TimerEvent& event);
+
+
+    // ------------------ Dynamic Reconfigure ------------------
+    void dynamicReconfigureCallback(geometric_controller::GeometricControllerConfig &config, uint32_t level);    
 };
