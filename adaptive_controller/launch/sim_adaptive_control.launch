@@ -21,28 +21,34 @@
             <param name="attctrl_constant" value="0.3"/>
             <param name="normalizedthrust_constant" value="0.06"/> <!-- 0.06 -->
             <param name="normalizedthrust_offset" value="0.1"/>
-            <param name="Kp_x" value="2.0" />
+            <!-- <param name="Kp_x" value="2.0" />
             <param name="Kp_y" value="2.0" />
             <param name="Kp_z" value="25" />
             <param name="KposI_z" value="0.0" />
             <param name="Kv_x" value="0.5"/>
             <param name="Kv_y" value="0.5"/>
-            <param name="Kv_z" value="10"/>   
-            <param name="learning_rate" value="0.1"/>     
+            <param name="Kv_z" value="10"/>    -->
+            <param name="Kp_x" value="10.0" />
+            <param name="Kp_y" value="10.0" />
+            <param name="Kp_z" value="20.0" />
+            <param name="Kv_x" value="5.0"/>
+            <param name="Kv_y" value="5.0"/>
+            <param name="Kv_z" value="10.0"/>            
+            <param name="learning_rate" value="0.0001"/>     
     </node>
 
   <arg name="drone_home_x" default="0"/>
   <arg name="drone_home_y" default="0"/>
   <arg name="drone_home_z" default="1"/>
   <arg name="drone_takeoff_height" default="1"/>
-  <arg name="take_off_time" default="4"/>
+  <arg name="take_off_time" default="4"/>  
 
   <node pkg="trajectory_generator" type="trajectory_generator_node" name="trajectory_generator_node" output="screen">
             <!-- write param for them -->
               <param name="circle_axis_x" value="0" />
               <param name="circle_axis_y" value="0" />
               <param name="circle_axis_z" value="1" />
-              <param name="circle_omega" value="1" />
+              <param name="circle_omega" value="0.5" />
               <param name="radius" value="1.0" />
               <param name="intial_post_x" value="0.0" />
               <param name="intial_post_y" value="0.0" />

@@ -19,6 +19,7 @@ AdaptiveGain::~AdaptiveGain()
 
 }
 
+
 // set learning rate
 void AdaptiveGain::setLearningRate(const double &learning_rate)
 {

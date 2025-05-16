@@ -150,24 +150,24 @@
      twist_msg.twist.linear.z = v_targ_(2);
      reference_pub_.publish(twist_msg);
  
-     mavros_msgs::PositionTarget raw_msg;
-     raw_msg.header.stamp = ros::Time::now();
-     raw_msg.header.frame_id = "map";
-     raw_msg.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
-     raw_msg.type_mask = 0;
-     raw_msg.position.x = p_targ_(0);
-     raw_msg.position.y = p_targ_(1);
-     raw_msg.position.z = p_targ_(2);
-     raw_msg.velocity.x = v_targ_(0);
-     raw_msg.velocity.y = v_targ_(1);
-     raw_msg.velocity.z = v_targ_(2);
-     raw_msg.acceleration_or_force.x = a_targ_(0);
-     raw_msg.acceleration_or_force.y = a_targ_(1);
-     raw_msg.acceleration_or_force.z = a_targ_(2);
-     raw_reference_pub_.publish(raw_msg);
+    //  mavros_msgs::PositionTarget raw_msg;
+    //  raw_msg.header.stamp = ros::Time::now();
+    //  raw_msg.header.frame_id = "map";
+    //  raw_msg.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
+    //  raw_msg.type_mask = 0;
+    //  raw_msg.position.x = p_targ_(0);
+    //  raw_msg.position.y = p_targ_(1);
+    //  raw_msg.position.z = p_targ_(2);
+    //  raw_msg.velocity.x = v_targ_(0);
+    //  raw_msg.velocity.y = v_targ_(1);
+    //  raw_msg.velocity.z = v_targ_(2);
+    //  raw_msg.acceleration_or_force.x = a_targ_(0);
+    //  raw_msg.acceleration_or_force.y = a_targ_(1);
+    //  raw_msg.acceleration_or_force.z = a_targ_(2);
+    //  raw_reference_pub_.publish(raw_msg);
 
-     ROS_DEBUG_STREAM("Publishing reference position at" << p_targ_.transpose());
-     ROS_DEBUG_STREAM("Publishing reference vel at" << v_targ_.transpose() );
-     ROS_DEBUG_STREAM("Publishing reference acc at" << a_targ_.transpose() );
+    //  ROS_DEBUG_STREAM("Publishing reference position at" << p_targ_.transpose());
+    //  ROS_DEBUG_STREAM("Publishing reference vel at" << v_targ_.transpose() );
+    //  ROS_DEBUG_STREAM("Publishing reference acc at" << a_targ_.transpose() );
  }
  
