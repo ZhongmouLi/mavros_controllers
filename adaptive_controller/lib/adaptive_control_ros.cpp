@@ -485,7 +485,7 @@ bool adaptiveControlROS::updatePostControlGain()
     auto dw = ptr_adaptive_gain->dw();
 
     auto learning_rate = ptr_adaptive_gain->learningRate();
-    ROS_INFO_STREAM_THROTTLE(1.0, "learning_rate is " << learning_rate);
+    ROS_INFO_STREAM("learning_rate is " << learning_rate);
 
 
     //2. do learning for gains
@@ -494,16 +494,16 @@ bool adaptiveControlROS::updatePostControlGain()
     // 3. compute adaptive gain
     ptr_adaptive_gain->ComputeAdaptiveGains();
 
-    Eigen::Vector3d kp_adaptive = ptr_adaptive_gain->pGainAdaptive();
-    Eigen::Vector3d kd_adaptive = ptr_adaptive_gain->dGainAdaptive();
-    setPostControlPGains(kp_adaptive);
-    setPostControlDGains(kd_adaptive);
-    setPostControlIGains(Eigen::Vector3d(0, 0, 0));
+    // Eigen::Vector3d kp_adaptive = ptr_adaptive_gain->pGainAdaptive();
+    // Eigen::Vector3d kd_adaptive = ptr_adaptive_gain->dGainAdaptive();
+    // setPostControlPGains(kp_adaptive);
+    // setPostControlDGains(kd_adaptive);
+    // setPostControlIGains(Eigen::Vector3d(0, 0, 0));
 
 
 
-    ROS_INFO_STREAM_THROTTLE(1.0, "daptive p gain is " << kp_adaptive.transpose());
-    ROS_INFO_STREAM_THROTTLE(1.0, "daptive d gain is " << kd_adaptive.transpose());
+    // ROS_INFO_STREAM("daptive p gain is " << kp_adaptive.transpose());
+    // ROS_INFO_STREAM("daptive d gain is " << kd_adaptive.transpose());
 
     // 4. update learning machine with integration
     ptr_adaptive_gain->ComputeIntigration();
@@ -513,9 +513,17 @@ bool adaptiveControlROS::updatePostControlGain()
 
    
     if (learning_status) {
-        ROS_INFO_STREAM_THROTTLE(1.0, "Learning is successful");
+        ROS_INFO_STREAM("Learning is successful");
+        Eigen::Vector3d kp_adaptive = ptr_adaptive_gain->pGainAdaptive();
+        Eigen::Vector3d kd_adaptive = ptr_adaptive_gain->dGainAdaptive();
+        setPostControlPGains(kp_adaptive);
+        setPostControlDGains(kd_adaptive);
+        setPostControlIGains(Eigen::Vector3d(0, 0, 0));
+
+        ROS_INFO_STREAM("daptive p gain is " << kp_adaptive.transpose());
+        ROS_INFO_STREAM("daptive d gain is " << kd_adaptive.transpose());
     } else {
-        ROS_WARN_STREAM_THROTTLE(1.0, "Learning is unsuccessful:");
+        ROS_WARN_STREAM("Learning is unsuccessful");
     }
 }
 

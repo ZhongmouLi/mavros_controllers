@@ -34,7 +34,7 @@
             <param name="Kv_x" value="5.0"/>
             <param name="Kv_y" value="5.0"/>
             <param name="Kv_z" value="10.0"/>            
-            <param name="learning_rate" value="0.0001"/>     
+            <param name="learning_rate" value="0.001"/>     
     </node>
 
   <arg name="drone_home_x" default="0"/>
