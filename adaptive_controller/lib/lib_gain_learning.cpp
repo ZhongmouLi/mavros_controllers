@@ -25,10 +25,10 @@ void AdaptiveGain::setLearningRate(const double &learning_rate)
 {
  
     // check if learning rate is positive
-    if (learning_rate <= 0)
-    {
-        throw std::invalid_argument("Learning rate must be positive.");
-    };
+    // if (learning_rate <= 0)
+    // {
+    //     throw std::invalid_argument("Learning rate must be positive.");
+    // };
 
     // set learning rate
     l_ = learning_rate;

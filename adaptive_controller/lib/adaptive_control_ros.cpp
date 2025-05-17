@@ -525,6 +525,8 @@ bool adaptiveControlROS::updatePostControlGain()
     } else {
         ROS_WARN_STREAM("Learning is unsuccessful");
     }
+
+    
 }
 
 

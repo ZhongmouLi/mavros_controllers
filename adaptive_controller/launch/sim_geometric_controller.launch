@@ -28,8 +28,8 @@
             <param name="Kv_x" value="0.5"/>
             <param name="Kv_y" value="0.5"/>
             <param name="Kv_z" value="10"/>    -->
-            <param name="Kp_x" value="10.0" />
-            <param name="Kp_y" value="10.0" />
+            <param name="Kp_x" value="15.0" />
+            <param name="Kp_y" value="15.0" />
             <param name="Kp_z" value="20.0" />
             <param name="Kv_x" value="5.0"/>
             <param name="Kv_y" value="5.0"/>
