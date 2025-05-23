@@ -38,7 +38,11 @@ private:
     ros::Subscriber referenceSub_;      ///< Subscribe to target pose & velocity, calls targetCallback()
     ros::Subscriber yawreferenceSub_;   ///< Subscribe to target yaw, calls yawtargetCallback()
     ros::Subscriber mavstateSub_;        ///< Subscribe to MAVROS state, calls mavstateCallback()
-    ros::Subscriber mavposeSub_;         ///< Subscribe to MAV pose (vicon/mavros), calls mavposeCallback()
+    
+    bool use_vicon_ = false; ///< Flag to indicate if VICON is used for pose estimation
+    bool use_gps_ = false; ///< Flag to indicate if GPS is used for pose estimation
+    ros::Subscriber mavVICONposeSub_;    ///< Subscribe to VICON pose, calls mavVICONposeCallback()
+    ros::Subscriber mavGPSposeSub_;      ///< Subscribe to MAV pose (mavros), calls mavposeCallback()
     ros::Subscriber mavtwistSub_;        ///< Subscribe to MAV velocity, calls mavtwistCallback()
 
     // ------------------ Publishers ------------------
@@ -152,8 +156,9 @@ public:
     /**
      * @brief Callback for receiving MAV pose (vicon/drone or mavros/local_position/pose)
      */
-    // void mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon);
-    void mavposeCallback(const geometry_msgs::PoseStamped &msg);
+    void mavVICONposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon);
+    
+    void mavGPSposeCallback(const geometry_msgs::PoseStamped &msg);
 
     /**
      * @brief Callback for receiving MAV twist (mavros/local_position/velocity_local)

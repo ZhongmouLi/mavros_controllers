@@ -11,8 +11,8 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     referenceSub_ = nh_.subscribe("reference/setpoint", 1, &geomControlROS::targetCallback, this, ros::TransportHints().tcpNoDelay());
     yawreferenceSub_ = nh_.subscribe("reference/yaw", 1, &geomControlROS::yawtargetCallback, this, ros::TransportHints().tcpNoDelay());
     mavstateSub_ = nh_.subscribe("mavros/state", 1, &geomControlROS::mavstateCallback, this, ros::TransportHints().tcpNoDelay());
-    // mavposeSub_ = nh_.subscribe("vicon/drone", 1, &geomControlROS::mavposeCallback, this, ros::TransportHints().tcpNoDelay());
-    mavposeSub_ = nh_.subscribe("mavros/local_position/pose", 1, &geomControlROS::mavposeCallback, this, ros::TransportHints().tcpNoDelay());
+    mavVICONposeSub_ = nh_.subscribe("vicon/drone", 1, &geomControlROS::mavVICONposeCallback, this, ros::TransportHints().tcpNoDelay());
+    mavGPSposeSub_ = nh_.subscribe("mavros/local_position/pose", 1, &geomControlROS::mavGPSposeCallback, this, ros::TransportHints().tcpNoDelay());
     mavtwistSub_ = nh_.subscribe("mavros/local_position/velocity_local", 1, &geomControlROS::mavtwistCallback, this, ros::TransportHints().tcpNoDelay());
 
     // ------------------ Setup Publishers ------------------
@@ -47,7 +47,11 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     // System identification
     std::string mav_name;
     nh_private_.param<std::string>("mavname", mav_name, "iris");
-    
+
+    nh_private_.param<bool>("use_vicon", use_vicon_, false);
+
+    nh_private_.param<bool>("use_gps", use_gps_, true);
+
     // Controller mode
     int ctrl_mode;
     nh_private_.param<int>("ctrl_mode", ctrl_mode, ERROR_QUATERNION);
@@ -214,8 +218,11 @@ void geomControlROS::mavstateCallback(const mavros_msgs::State::ConstPtr& msg)
 //     mavAtt_(3) = msg.pose.orientation.z;
 //   }
 
-void geomControlROS::mavposeCallback(const geometry_msgs::PoseStamped &msg)
+void geomControlROS::mavGPSposeCallback(const geometry_msgs::PoseStamped &msg)
 {
+    if (!use_gps_) return;    // Ignore GPS pose if not enabled
+
+
     if ((ros::Time::now() - mavpose_receive_last_).toSec() > 2.0) {  // e.g., 1 second without pose
         ROS_WARN_STREAM_THROTTLE(2.0, "No drone pose is received yet");
     }
@@ -242,41 +249,46 @@ void geomControlROS::mavposeCallback(const geometry_msgs::PoseStamped &msg)
     // if (posehistory_vector_.size() > 200) { // Limit history size
     //     posehistory_vector_.pop_back();
     // }
+
+    ROS_INFO_STREAM_THROTTLE(5.0, "Drone pose is from GPS");
 }
 
 
 
-// void geomControlROS::mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon)
-// {
-//     geometry_msgs::Pose pose;
-//     pose.position.x = msg_vicon->transform.translation.x;
-//     pose.position.y = msg_vicon->transform.translation.y;
-//     pose.position.z = msg_vicon->transform.translation.z;
-//     pose.orientation = msg_vicon->transform.rotation;
+void geomControlROS::mavVICONposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon)
+{
 
-//     if (!isHomePositionSet()) {
-//         setHomePosition(toEigen(pose.position));
-//         ROS_INFO_STREAM("Home pose initialized to: " << toEigen(pose.position).transpose());
-//     }
+    if (!use_vicon_) return;    // Ignore VICON pose if not enabled
 
-//     updateMavPositionAttitude(toEigen(pose.position), toEigen(pose.orientation));
+    if ((ros::Time::now() - mavpose_receive_last_).toSec() > 2.0) {  // e.g., 1 second without pose
+        ROS_WARN_STREAM_THROTTLE(2.0, "No drone pose is received yet");
+    }
+
+    geometry_msgs::Pose pose;
+    pose.position.x = msg_vicon->transform.translation.x;
+    pose.position.y = msg_vicon->transform.translation.y;
+    pose.position.z = msg_vicon->transform.translation.z;
+    pose.orientation = msg_vicon->transform.rotation;
+
+    if (!isHomePositionSet()) {
+        setHomePosition(toEigen(pose.position));
+        ROS_INFO_STREAM("Home pose initialized to: " << toEigen(pose.position).transpose());
+    }
+
+    updateMavPositionAttitude(toEigen(pose.position), toEigen(pose.orientation));
     
-//     // Add current pose to history vector
-//     geometry_msgs::PoseStamped pose_stamped;
-//     pose_stamped.header.stamp = ros::Time::now();
-//     pose_stamped.header.frame_id = "map";
-//     pose_stamped.pose = pose;
-    
-//     posehistory_vector_.insert(posehistory_vector_.begin(), pose_stamped);
-//     if (posehistory_vector_.size() > 200) { // Limit history size
-//         posehistory_vector_.pop_back();
-//     }
-// }
+ 
+    mavpose_receive_last_ = ros::Time::now();  // Update last received time
+
+    ROS_INFO_STREAM_THROTTLE(5.0, "Drone pose is from VICON");
+}
+
 
 void geomControlROS::mavtwistCallback(const geometry_msgs::TwistStamped& msg)
 {
     updateMavVelRate(toEigen(msg.twist.linear), toEigen(msg.twist.angular));
 }
+
 
 bool geomControlROS::ctrltriggerCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res)
 {
