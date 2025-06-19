@@ -36,7 +36,7 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
 
     // Initialize time variables
     last_request_ = ros::Time::now();
-    reference_request_now_ = ros::Time::now();
+    reference_request_now_ = ros::Time::now();true
     reference_request_last_ = ros::Time::now();
 
     mavpose_receive_last_ = ros::Time::now();
@@ -48,9 +48,9 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     std::string mav_name;
     nh_private_.param<std::string>("mavname", mav_name, "iris");
 
-    nh_private_.param<bool>("use_vicon", use_vicon_, false);
+    nh_private_.param<bool>("use_vicon", use_vicon_, true);
 
-    nh_private_.param<bool>("use_gps", use_gps_, true);
+    nh_private_.param<bool>("use_gps", use_gps_, false);
 
     // Controller mode
     int ctrl_mode;
@@ -58,7 +58,7 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     setControlMode(ctrl_mode);
     
     // Simulation and yaw mode
-    nh_private_.param<bool>("enable_sim", sim_enable_, true);
+    nh_private_.param<bool>("enable_sim", sim_enable_, false);
     
     bool velocity_yaw;
     nh_private_.param<bool>("velocity_yaw", velocity_yaw, false);
