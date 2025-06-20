@@ -35,12 +35,6 @@
     </node>
 
 
-  <arg name="drone_home_x" default="0"/>
-  <arg name="drone_home_y" default="0"/>
-  <arg name="drone_home_z" default="0.3"/>
-  <arg name="drone_takeoff_height" default="1"/>
-  <arg name="take_off_time" default="4"/>
-
   <node pkg="trajectory_generator" type="trajectory_generator_node" name="trajectory_generator_node" output="screen">
             <!-- write param for them -->
               <param name="circle_axis_x" value="0" />
