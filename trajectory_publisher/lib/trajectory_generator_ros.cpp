@@ -26,7 +26,7 @@
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
  * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVIStakeoffPoseCallbackED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
@@ -50,32 +50,15 @@
      nh_private_.param("circle_axis_z", axis_[2], 1.0);
      nh_private_.param("circle_omega", omega_, 1.0);
      nh_private_.param("radius", radius_, 1.0);
-     nh_private_.param("intial_post_x", initial_post_[0], 0.0);
-     nh_private_.param("intial_post_y", initial_post_[1], 0.0);
-     nh_private_.param("intial_post_z", initial_post_[2], 1.0);
+    //  nh_private_.param("intial_post_x", initial_post_[0], 0.0);
+    //  nh_private_.param("intial_post_y", initial_post_[1], 0.0);
+    //  nh_private_.param("intial_post_z", initial_post_[2], 1.0);
      
- 
-     // Initialize generator
-    //  generator_ = std::make_shared<TrajectoryGenerator>(0.01,1);
-
-    //  generator_->setTrajectoryType("CIRCLE");
-     
-    //  generator_->initializeGenerator() ;
-     
-    //  generator_->setHomePosition(initial_post_);
-     
-    //  generator_->setCircleTrajectory(axis_, radius_, omega_);
- 
-    // generator_ = std::make_shared<TrajectoryGenerator>(0.01, 1);
-    // generator_->setTrajectoryType("CIRCLE");
-    // generator_->initializeGenerator();
-    // generator_->setInitPosition(Eigen::Vector3d(0, 0, 1));
-    // generator_->setCircleTrajectory(Eigen::Vector3d(0, 0, 1), 1, 1.0);
 
     generator_ = std::make_shared<TrajectoryGenerator>(0.01, 1);
     generator_->setTrajectoryType("CIRCLE");
     generator_->initializeGenerator();
-    generator_->setHomePosition(initial_post_);
+    // generator_->setHomePosition(initial_post_);
     generator_->setCircleTrajectory(axis_, radius_, omega_);
 
      // Publishers
@@ -84,7 +67,10 @@
  
      // Service
      start_service_ = nh_.advertiseService("trajectory_generator/start", &TrajectoryGeneratorROS::startCallback, this);
- 
+
+    //  // Subscribers
+     takeoff_pose_sub_ = nh_.subscribe("reference/takeoff_pose", 1, &TrajectoryGeneratorROS::takeoffPoseCallback, this, ros::TransportHints().tcpNoDelay());
+
      // Timers
      loop_timer_ = nh_.createTimer(ros::Duration(0.1), &TrajectoryGeneratorROS::loopCallback, this);
      ref_timer_ = nh_.createTimer(ros::Duration(0.01), &TrajectoryGeneratorROS::refCallback, this);
@@ -121,19 +107,39 @@
     a_targ_ = generator_->targetAcceleration();
 
  }
- 
- void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
+
+ void TrajectoryGeneratorROS::takeoffPoseCallback(const geometry_msgs::PoseStamped& msg)
+{
+    // Update the takeoff position based on the received message
+    initial_post_ = toEigen(msg.pose.position);
+    generator_->setHomePosition(initial_post_);
+    ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is set to: " << initial_post_.transpose());
+    is_initial_position_set_ = true;
+    
+}
+
+void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
      if (!is_active_) return;
      // Add any trajectory visualization here if needed
  }
  
  void TrajectoryGeneratorROS::refCallback(const ros::TimerEvent&) {
-     if (!is_active_)
-     { 
+
+    // check initial position and active state
+    // If the initial position is not set or the trajectory is not active, do not publish
+    if (!is_initial_position_set_)
+    {
+        ROS_INFO_THROTTLE(1.0, "Initial position of trajectory is not set, waiting for /start service call...");
+
+        return;
+    }
+    else if (!is_active_)
+     {
         ROS_INFO_THROTTLE(1.0, "Trajectory is not active, waiting for /start service call...");
 
         return;
       }
+        // This callback runs at 100Hz, so we can compute the trajectory at this rate
         // Get the elapsed time since the trajectory started
      
       // compute the reference state
