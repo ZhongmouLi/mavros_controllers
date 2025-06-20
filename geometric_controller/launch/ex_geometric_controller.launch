@@ -32,19 +32,10 @@
             <param name="KposI_z" value="0.5" />          
     </node>
 
-  <arg name="drone_home_x" default="0"/>
-  <arg name="drone_home_y" default="0"/>
-  <arg name="drone_home_z" default="1"/>
-  <arg name="drone_takeoff_height" default="1"/>
-  <arg name="take_off_time" default="4"/>
 
   <node pkg="geometric_controller" type="geometric_controller_takeoff_node_trajectory" name="geometric_takeoff" output="screen">
-      <param name="home_x" value="$(arg drone_home_x)" />
-      <param name="home_y" value="$(arg drone_home_y)" />
-      <param name="home_z" value="$(arg drone_home_z)" />
-      <param name="take_off_height" value="$(arg drone_takeoff_height)" />
-      <param name="take_off_time" value="$(arg take_off_time)" />
-      
+
+
   </node>  
 
   </launch>

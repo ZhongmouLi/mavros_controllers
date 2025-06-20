@@ -18,6 +18,8 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     // ------------------ Setup Publishers ------------------
     angularVelPub_ = nh_.advertise<mavros_msgs::AttitudeTarget>("command/bodyrate_command", 1);
     referencePosePub_ = nh_.advertise<geometry_msgs::PoseStamped>("reference/pose", 1);
+    takeoffPosePub_ = nh_.advertise<geometry_msgs::PoseStamped>("reference/takeoff_pose", 1);
+
     // to remove
     target_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
     posehistoryPub_ = nh_.advertise<nav_msgs::Path>("geometric_controller/path", 10);
@@ -33,6 +35,7 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     // ------------------ Setup Timers ------------------
     cmdloop_timer_ = nh_.createTimer(ros::Duration(0.01), &geomControlROS::cmdloopCallback, this);
     statusloop_timer_ = nh_.createTimer(ros::Duration(1.0), &geomControlROS::statusloopCallback, this);
+    takeoffPostloop_timer_ = nh_.createTimer(ros::Duration(0.01), &geomControlROS::takeoffPostloopCallback, this);
 
     // Initialize time variables
     last_request_ = ros::Time::now();
@@ -509,6 +512,24 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
         ROS_INFO_THROTTLE(5.0, "Waiting for being armed and OFFBOARD mode using TRANSMITTER.");
     }
     
+}
+
+
+void geomControlROS::takeoffPostloopCallback(const ros::TimerEvent& event)
+{
+
+    // Publish the takeoff pose
+    if (!isHomePositionSet()) {
+        ROS_WARN_THROTTLE(2.0, "Home position is not set yet, cannot publish takeoff pose.");
+        return;
+    }
+
+    pubTakeoffPose();
+    ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is published: " 
+        << takeoffTargetPosition().transpose());
+}
+
+
     // // Update the state variables based on current_state_ regardless of simulation mode
     // // Update the state variables based on current_state_
     // if (current_state_.armed) {
@@ -525,7 +546,7 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
     // }
     // // Publish system status
     // pubSystemStatus();
-}
+
 
 void geomControlROS::pubReferencePose(const Eigen::Vector3d& target_position, const Eigen::Vector4d& target_attitude)
 {
@@ -568,6 +589,27 @@ void geomControlROS::pubControlCommands(const Eigen::Vector4d& cmd, const Eigen:
     msg.orientation.z = target_attitude(3);
     msg.thrust = cmd(3);
     angularVelPub_.publish(msg);
+}
+
+
+void geomControlROS::pubTakeoffPose()
+{
+    geometry_msgs::PoseStamped takeoff_pose;
+    takeoff_pose.header.stamp = ros::Time::now();
+    takeoff_pose.header.frame_id = "map";  // Ensure consistent frame, if needed
+
+    // Use the accessor method to get takeoff position
+    Eigen::Vector3d takeoff_position = takeoffTargetPosition();
+    takeoff_pose.pose.position.x = takeoff_position(0);
+    takeoff_pose.pose.position.y = takeoff_position(1);
+    takeoff_pose.pose.position.z = takeoff_position(2);
+
+    takeoff_pose.pose.orientation.w = 1.0;
+    takeoff_pose.pose.orientation.x = 0.0;
+    takeoff_pose.pose.orientation.y = 0.0;
+    takeoff_pose.pose.orientation.z = 0.0;
+
+    takeoffPosePub_.publish(takeoff_pose);
 }
 
 void geomControlROS::updateAndPublishPoseHistory()
