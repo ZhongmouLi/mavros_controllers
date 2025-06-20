@@ -11,7 +11,7 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     referenceSub_ = nh_.subscribe("reference/setpoint", 1, &geomControlROS::targetCallback, this, ros::TransportHints().tcpNoDelay());
     yawreferenceSub_ = nh_.subscribe("reference/yaw", 1, &geomControlROS::yawtargetCallback, this, ros::TransportHints().tcpNoDelay());
     mavstateSub_ = nh_.subscribe("mavros/state", 1, &geomControlROS::mavstateCallback, this, ros::TransportHints().tcpNoDelay());
-    mavVICONposeSub_ = nh_.subscribe("vicon/drone1", 1, &geomControlROS::mavVICONposeCallback, this, ros::TransportHints().tcpNoDelay());
+    mavVICONposeSub_ = nh_.subscribe("/vicon/drone1", 1, &geomControlROS::mavVICONposeCallback, this, ros::TransportHints().tcpNoDelay());
     mavGPSposeSub_ = nh_.subscribe("mavros/local_position/pose", 1, &geomControlROS::mavGPSposeCallback, this, ros::TransportHints().tcpNoDelay());
     mavtwistSub_ = nh_.subscribe("mavros/local_position/velocity_local", 1, &geomControlROS::mavtwistCallback, this, ros::TransportHints().tcpNoDelay());
 
