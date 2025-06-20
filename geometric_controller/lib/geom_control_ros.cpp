@@ -36,7 +36,7 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
 
     // Initialize time variables
     last_request_ = ros::Time::now();
-    reference_request_now_ = ros::Time::now();true
+    reference_request_now_ = ros::Time::now();
     reference_request_last_ = ros::Time::now();
 
     mavpose_receive_last_ = ros::Time::now();
