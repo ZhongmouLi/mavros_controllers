@@ -117,7 +117,7 @@ Eigen::Vector3d shapetrajectory::getVelocity(double time) {
   switch (type_) {
     case TRAJ_CIRCLE:
 
-      velocity = omega_ * normal_axis_.cross(getPosition(time));
+      velocity = omega_ * normal_axis_.cross(getPosition(time)-initialPosition());
       break;
     case TRAJ_STATIONARY:
 
