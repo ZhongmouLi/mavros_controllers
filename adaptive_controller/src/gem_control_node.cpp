@@ -38,11 +38,11 @@
  * @author Jaeyoung Lim <jalim@ethz.ch>
  */
 
- #include "geometric_controller/geom_control_ros.hpp"
+ #include "geometric_controller/adaptive_control_ros.hpp"
  #include <ros/ros.h>
  
  int main(int argc, char** argv) {
-     ros::init(argc, argv, "geometric_controller");
+     ros::init(argc, argv, "adaptive_controller");
      
      // Create node handles
      ros::NodeHandle nh("");
@@ -55,7 +55,7 @@
      
      // Create the controller instance
      ROS_INFO("Starting Geometric Controller ROS Node");
-     geomControlROS geometricController(nh, nh_private);
+     adaptiveControlROS adaptiveController(nh, nh_private);
      
      // Note: Dynamic reconfigure is omitted in this implementation
      // If needed, it can be added later with appropriate modifications
