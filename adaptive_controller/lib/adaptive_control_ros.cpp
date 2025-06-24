@@ -11,13 +11,16 @@ adaptiveControlROS::adaptiveControlROS(const ros::NodeHandle& nh, const ros::Nod
     referenceSub_ = nh_.subscribe("reference/setpoint", 1, &adaptiveControlROS::targetCallback, this, ros::TransportHints().tcpNoDelay());
     yawreferenceSub_ = nh_.subscribe("reference/yaw", 1, &adaptiveControlROS::yawtargetCallback, this, ros::TransportHints().tcpNoDelay());
     mavstateSub_ = nh_.subscribe("mavros/state", 1, &adaptiveControlROS::mavstateCallback, this, ros::TransportHints().tcpNoDelay());
-    // mavposeSub_ = nh_.subscribe("vicon/drone", 1, &adaptiveControlROS::mavposeCallback, this, ros::TransportHints().tcpNoDelay());
-    mavposeSub_ = nh_.subscribe("mavros/local_position/pose", 1, &adaptiveControlROS::mavposeCallback, this, ros::TransportHints().tcpNoDelay());
+    mavVICONposeSub_ = nh_.subscribe("/vicon/drone1", 1, &adaptiveControlROS::mavVICONposeCallback, this, ros::TransportHints().tcpNoDelay());
+    mavGPSposeSub_ = nh_.subscribe("mavros/local_position/pose", 1, &adaptiveControlROS::mavGPSposeCallback, this, ros::TransportHints().tcpNoDelay());
     mavtwistSub_ = nh_.subscribe("mavros/local_position/velocity_local", 1, &adaptiveControlROS::mavtwistCallback, this, ros::TransportHints().tcpNoDelay());
 
     // ------------------ Setup Publishers ------------------
     angularVelPub_ = nh_.advertise<mavros_msgs::AttitudeTarget>("command/bodyrate_command", 1);
     referencePosePub_ = nh_.advertise<geometry_msgs::PoseStamped>("reference/pose", 1);
+    takeoffPosePub_ = nh_.advertise<geometry_msgs::PoseStamped>("reference/takeoff_pose", 1);
+
+    // to remove
     target_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
     posehistoryPub_ = nh_.advertise<nav_msgs::Path>("geometric_controller/path", 10);
     systemstatusPub_ = nh_.advertise<mavros_msgs::CompanionProcessStatus>("mavros/companion_process/status", 1);
@@ -32,6 +35,7 @@ adaptiveControlROS::adaptiveControlROS(const ros::NodeHandle& nh, const ros::Nod
     // ------------------ Setup Timers ------------------
     cmdloop_timer_ = nh_.createTimer(ros::Duration(0.01), &adaptiveControlROS::cmdloopCallback, this);
     statusloop_timer_ = nh_.createTimer(ros::Duration(1.0), &adaptiveControlROS::statusloopCallback, this);
+    takeoffPostloop_timer_ = nh_.createTimer(ros::Duration(0.01), &adaptiveControlROS::takeoffPostloopCallback, this);
 
     // Initialize time variables
     last_request_ = ros::Time::now();
@@ -46,14 +50,18 @@ adaptiveControlROS::adaptiveControlROS(const ros::NodeHandle& nh, const ros::Nod
     // System identification
     std::string mav_name;
     nh_private_.param<std::string>("mavname", mav_name, "iris");
-    
+
+    nh_private_.param<bool>("use_vicon", use_vicon_, true);
+
+    nh_private_.param<bool>("use_gps", use_gps_, false);
+
     // Controller mode
     int ctrl_mode;
     nh_private_.param<int>("ctrl_mode", ctrl_mode, ERROR_QUATERNION);
     setControlMode(ctrl_mode);
     
     // Simulation and yaw mode
-    nh_private_.param<bool>("enable_sim", sim_enable_, true);
+    nh_private_.param<bool>("enable_sim", sim_enable_, false);
     
     bool velocity_yaw;
     nh_private_.param<bool>("velocity_yaw", velocity_yaw, false);
@@ -232,8 +240,11 @@ void adaptiveControlROS::mavstateCallback(const mavros_msgs::State::ConstPtr& ms
 //     mavAtt_(3) = msg.pose.orientation.z;
 //   }
 
-void adaptiveControlROS::mavposeCallback(const geometry_msgs::PoseStamped &msg)
+void adaptiveControlROS::mavGPSposeCallback(const geometry_msgs::PoseStamped &msg)
 {
+    if (!use_gps_) return;    // Ignore GPS pose if not enabled
+
+
     if ((ros::Time::now() - mavpose_receive_last_).toSec() > 2.0) {  // e.g., 1 second without pose
         ROS_WARN_STREAM_THROTTLE(2.0, "No drone pose is received yet");
     }
@@ -260,16 +271,46 @@ void adaptiveControlROS::mavposeCallback(const geometry_msgs::PoseStamped &msg)
     // if (posehistory_vector_.size() > 200) { // Limit history size
     //     posehistory_vector_.pop_back();
     // }
+
+    ROS_INFO_STREAM_THROTTLE(5.0, "Drone pose is from GPS");
 }
 
 
 
+void adaptiveControlROS::mavVICONposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon)
+{
+
+    if (!use_vicon_) return;    // Ignore VICON pose if not enabled
+
+    if ((ros::Time::now() - mavpose_receive_last_).toSec() > 2.0) {  // e.g., 1 second without pose
+        ROS_WARN_STREAM_THROTTLE(2.0, "No drone pose is received yet");
+    }
+
+    geometry_msgs::Pose pose;
+    pose.position.x = msg_vicon->transform.translation.x;
+    pose.position.y = msg_vicon->transform.translation.y;
+    pose.position.z = msg_vicon->transform.translation.z;
+    pose.orientation = msg_vicon->transform.rotation;
+
+    if (!isHomePositionSet()) {
+        setHomePosition(toEigen(pose.position));
+        ROS_INFO_STREAM("Home pose initialized to: " << toEigen(pose.position).transpose());
+    }
+
+    updateMavPositionAttitude(toEigen(pose.position), toEigen(pose.orientation));
+    
+ 
+    mavpose_receive_last_ = ros::Time::now();  // Update last received time
+
+    ROS_INFO_STREAM_THROTTLE(5.0, "Drone pose is from VICON");
+}
 
 
-void adaptiveControlROS::mavtwistCallback(const geometry_msgs::TwistStamped& msg)
+void geomControlROS::mavtwistCallback(const geometry_msgs::TwistStamped& msg)
 {
     updateMavVelRate(toEigen(msg.twist.linear), toEigen(msg.twist.angular));
 }
+
 
 bool adaptiveControlROS::ctrltriggerCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res)
 {
@@ -561,6 +602,24 @@ void adaptiveControlROS::statusloopCallback(const ros::TimerEvent& event)
         ROS_INFO_THROTTLE(5.0, "Waiting for being armed and OFFBOARD mode using TRANSMITTER.");
     }
     
+}
+
+
+void geomControlROS::takeoffPostloopCallback(const ros::TimerEvent& event)
+{
+
+    // Publish the takeoff pose
+    if (!isHomePositionSet()) {
+        ROS_WARN_THROTTLE(2.0, "Home position is not set yet, cannot publish takeoff pose.");
+        return;
+    }
+
+    pubTakeoffPose();
+    ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is published: " 
+        << takeoffTargetPosition().transpose());
+}
+
+
     // // Update the state variables based on current_state_ regardless of simulation mode
     // // Update the state variables based on current_state_
     // if (current_state_.armed) {
@@ -577,7 +636,7 @@ void adaptiveControlROS::statusloopCallback(const ros::TimerEvent& event)
     // }
     // // Publish system status
     // pubSystemStatus();
-}
+
 
 void adaptiveControlROS::pubReferencePose(const Eigen::Vector3d& target_position, const Eigen::Vector4d& target_attitude)
 {
@@ -622,6 +681,27 @@ void adaptiveControlROS::pubControlCommands(const Eigen::Vector4d& cmd, const Ei
     angularVelPub_.publish(msg);
 }
 
+
+void adaptiveControlROS::pubTakeoffPose()
+{
+    geometry_msgs::PoseStamped takeoff_pose;
+    takeoff_pose.header.stamp = ros::Time::now();
+    takeoff_pose.header.frame_id = "map";  // Ensure consistent frame, if needed
+
+    // Use the accessor method to get takeoff position
+    Eigen::Vector3d takeoff_position = takeoffTargetPosition();
+    takeoff_pose.pose.position.x = takeoff_position(0);
+    takeoff_pose.pose.position.y = takeoff_position(1);
+    takeoff_pose.pose.position.z = takeoff_position(2);
+
+    takeoff_pose.pose.orientation.w = 1.0;
+    takeoff_pose.pose.orientation.x = 0.0;
+    takeoff_pose.pose.orientation.y = 0.0;
+    takeoff_pose.pose.orientation.z = 0.0;
+
+    takeoffPosePub_.publish(takeoff_pose);
+}
+
 void adaptiveControlROS::updateAndPublishPoseHistory()
 {
     // nav_msgs::Path path_msg;
@@ -657,3 +737,42 @@ void adaptiveControlROS::pubSystemStatus() {
     
     // systemstatusPub_.publish(msg);
   }
+
+
+void geomControlROS::dynamicReconfigureCallback(geometric_controller::GeometricControllerConfig &config,
+                                               uint32_t level) {
+
+  // obtain the current values of controller gains
+  Eigen::Vector3d Kpos = kPPosController();
+  Eigen::Vector3d Kvel = kVPosController();
+  double max_feedback_acc = maxFeedbackAcceleration();
+
+  
+  if(max_feedback_acc != config.max_acc) {
+      max_feedback_acc = config.max_acc;
+      setMaxFeedbackAcceleration(max_feedback_acc);
+      ROS_INFO("Reconfigure request : max_feedback_acc  = %.2f  ", config.max_acc);
+    }
+    if (Kpos[0] != -config.Kp_x) {
+        Kpos[0] = -config.Kp_x;
+        ROS_INFO("Reconfigure request : Kp_x  = %.2f  ", config.Kp_x);
+    } else if (Kpos[1] != -config.Kp_y) {
+        Kpos[1] = -config.Kp_y;
+        ROS_INFO("Reconfigure request : Kp_y  = %.2f  ", config.Kp_y);
+    } else if (Kpos[2] != -config.Kp_z) {
+        Kpos[2] = -config.Kp_z;
+        ROS_INFO("Reconfigure request : Kp_z  = %.2f  ", config.Kp_z);
+    } else if (Kvel[0] != -config.Kv_x) {
+        Kvel[0] = -config.Kv_x;
+        ROS_INFO("Reconfigure request : Kv_x  = %.2f  ", config.Kv_x);
+    } else if (Kvel[1] != -config.Kv_y) {
+        Kvel[1] = -config.Kv_y;
+        ROS_INFO("Reconfigure request : Kv_y =%.2f  ", config.Kv_y);
+    } else if (Kvel[2] != -config.Kv_z) {
+        Kvel[2] = -config.Kv_z;
+        ROS_INFO("Reconfigure request : Kv_z  = %.2f  ", config.Kv_z);
+    }
+
+    setPostControlPGains(Kpos);
+    setPostControlDGains(Kvel);
+}  

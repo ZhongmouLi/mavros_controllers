@@ -16,6 +16,8 @@
             <remap from="command/bodyrate_command" to="mavros/setpoint_raw/attitude"/>
             <param name="ctrl_mode" value="$(arg command_input)" />
             <param name="enable_sim" value="$(arg gazebo_simulation)" />
+            <param name="use_vicon" value="true" />
+            <param name="use_gps" value="false" />
             <param name="max_acc" value="10.0" />
             <!--Params specific for Iris copter-->
             <param name="attctrl_constant" value="0.3"/>
@@ -32,19 +34,14 @@
             <param name="KposI_z" value="0.5" />          
     </node>
 
-  <arg name="drone_home_x" default="0"/>
-  <arg name="drone_home_y" default="0"/>
-  <arg name="drone_home_z" default="1"/>
-  <arg name="drone_takeoff_height" default="1"/>
-  <arg name="take_off_time" default="4"/>
 
-  <node pkg="geometric_controller" type="geometric_controller_takeoff_node_trajectory" name="geometric_takeoff" output="screen">
-      <param name="home_x" value="$(arg drone_home_x)" />
-      <param name="home_y" value="$(arg drone_home_y)" />
-      <param name="home_z" value="$(arg drone_home_z)" />
-      <param name="take_off_height" value="$(arg drone_takeoff_height)" />
-      <param name="take_off_time" value="$(arg take_off_time)" />
-      
-  </node>  
+  <node pkg="trajectory_generator" type="trajectory_generator_node" name="trajectory_generator_node" output="screen">
+            <!-- write param for them -->
+              <param name="circle_axis_x" value="0" />
+              <param name="circle_axis_y" value="0" />
+              <param name="circle_axis_z" value="1" />
+              <param name="circle_omega" value="0.5" />
+              <param name="radius" value="1.0" />
+   </node>  
 
   </launch>

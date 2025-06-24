@@ -1,20 +1,20 @@
 /****************************************************************************
  *
- * Copyright (c) 2018-2021 Jaeyoung Lim. All rights reserved.
+ *   Copyright (c) 2018-2021 Jaeyoung Lim. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- * notice, this list of conditions and the following disclaimer.
+ *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- * notice, this list of conditions and the following disclaimer in
- * the documentation and/or other materials provided with the
- * distribution.
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
  * 3. Neither the name PX4 nor the names of its contributors may be
- * used to endorse or promote products derived from this software
- * without specific prior written permission.
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -31,37 +31,36 @@
  *
  ****************************************************************************/
 /**
- * @brief Geometric Controller Node
+ * @brief Common library
  *
- * Geometric controller ROS Node Implementation
+ * Common library for geometric controller
  *
  * @author Jaeyoung Lim <jalim@ethz.ch>
  */
 
- #include "geometric_controller/adaptive_control_ros.hpp"
- #include <ros/ros.h>
+ #ifndef COMMON_ROS_H
+ #define COMMON_ROS_H
  
- int main(int argc, char** argv) {
-     ros::init(argc, argv, "adaptive_controller");
-     
-     // Create node handles
-     ros::NodeHandle nh("");
-     ros::NodeHandle nh_private("~");
-     
-     // Set log level to Debug
-     if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug)) {
-         ros::console::notifyLoggerLevelsChanged();
-     }
-     
-     // Create the controller instance
-     ROS_INFO("Starting Adaptive gain Controller ROS Node");
-     adaptiveControlROS adaptiveController(nh, nh_private);
-     
-     // Note: Dynamic reconfigure is omitted in this implementation
-     // If needed, it can be added later with appropriate modifications
-     
-     // Spin and let the callbacks do their work
-     ros::spin();
-     
-     return 0;
- }
+ #include <geometry_msgs/PoseStamped.h>
+ #include <geometry_msgs/Twist.h>
+ #include <geometry_msgs/TwistStamped.h>
+ #include <Eigen/Dense>
+ 
+inline Eigen::Vector3d toEigen(const geometry_msgs::Point &p) {
+    Eigen::Vector3d ev3(p.x, p.y, p.z);
+    return ev3;
+}
+  
+inline Eigen::Vector3d toEigen(const geometry_msgs::Vector3 &v3) {
+    Eigen::Vector3d ev3(v3.x, v3.y, v3.z);
+    return ev3;
+}
+
+inline Eigen::Vector4d toEigen(const geometry_msgs::Quaternion &q) {
+  // Note: In Eigen, quaternion format is (w,x,y,z)
+  return Eigen::Vector4d(q.w, q.x, q.y, q.z);
+}
+
+
+ #endif
+ 

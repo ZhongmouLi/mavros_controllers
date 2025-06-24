@@ -16,7 +16,8 @@
 #include <nav_msgs/Path.h>
 #include <std_srvs/SetBool.h>
 #include <std_msgs/Float32.h>
-#include <vector>
+#include "geometric_controller/geom_control_base.hpp"
+#include "geometric_controller/common_ros.hpp"
 
 /**
  * @brief ROS wrapper class for geomControlBase
@@ -37,7 +38,11 @@ private:
     ros::Subscriber referenceSub_;      ///< Subscribe to target pose & velocity, calls targetCallback()
     ros::Subscriber yawreferenceSub_;   ///< Subscribe to target yaw, calls yawtargetCallback()
     ros::Subscriber mavstateSub_;        ///< Subscribe to MAVROS state, calls mavstateCallback()
-    ros::Subscriber mavposeSub_;         ///< Subscribe to MAV pose (vicon/mavros), calls mavposeCallback()
+    
+    bool use_vicon_ = false; ///< Flag to indicate if VICON is used for pose estimation
+    bool use_gps_ = false; ///< Flag to indicate if GPS is used for pose estimation
+    ros::Subscriber mavVICONposeSub_;    ///< Subscribe to VICON pose, calls mavVICONposeCallback()
+    ros::Subscriber mavGPSposeSub_;      ///< Subscribe to MAV pose (mavros), calls mavposeCallback()
     ros::Subscriber mavtwistSub_;        ///< Subscribe to MAV velocity, calls mavtwistCallback()
 
     // ------------------ Publishers ------------------
@@ -47,6 +52,7 @@ private:
     ros::Publisher target_pose_pub_;     ///< Publish target position to MAVROS (mavros/setpoint_position/local)
     ros::Publisher posehistoryPub_;      ///< Publish path history (geometric_controller/path)
     ros::Publisher systemstatusPub_;     ///< Publish system status (mavros/companion_process/status)
+    ros::Publisher takeoffPosePub_;      ///< Publish takeoff pose (reference/takeoff_pose)
 
     // ------------------ Service Clients ------------------
 
@@ -58,10 +64,12 @@ private:
     ros::ServiceServer ctrltriggerServ_; ///< Service to trigger controller (trigger_rlcontroller)
     ros::ServiceServer land_service_;    ///< Service to command landing (land)
 
+
     // ------------------ Timers ------------------
 
     ros::Timer cmdloop_timer_;            ///< Timer for command loop (10ms rate)
     ros::Timer statusloop_timer_;         ///< Timer for status loop (1s rate)
+    ros::Timer takeoffPostloop_timer_;    ///< Timer for post-takeoff loop (10ms rate)
 
     // ------------------ Other Members ------------------
 
@@ -124,6 +132,12 @@ private:
 
     void pubTargetPose2PX4Controller(const Eigen::Vector3d& target_position);
 
+    /**
+     * @brief position after takeoff
+     */
+    void takeoffPostloopCallback(const ros::TimerEvent& event);
+    void pubTakeoffPose();
+
 
 
 
@@ -155,8 +169,9 @@ public:
     /**
      * @brief Callback for receiving MAV pose (vicon/drone or mavros/local_position/pose)
      */
-    // void mavposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon);
-    void mavposeCallback(const geometry_msgs::PoseStamped &msg);
+    void mavVICONposeCallback(const geometry_msgs::TransformStamped::ConstPtr& msg_vicon);
+    
+    void mavGPSposeCallback(const geometry_msgs::PoseStamped &msg);
 
     /**
      * @brief Callback for receiving MAV twist (mavros/local_position/velocity_local)
@@ -187,6 +202,8 @@ public:
      */
     void cmdloopCallback(const ros::TimerEvent& event);
 
+
+
     /**
      * @brief System status monitoring timer callback (1s)
      */
@@ -195,4 +212,6 @@ public:
 
     // ------------------ adaptive gain update ------------------
     bool updatePostControlGain();
+    // ------------------ Dynamic Reconfigure ------------------
+    void dynamicReconfigureCallback(geometric_controller::GeometricControllerConfig &config, uint32_t level);    
 };
