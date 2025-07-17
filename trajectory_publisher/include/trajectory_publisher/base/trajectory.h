@@ -70,17 +70,19 @@
    virtual Eigen::Vector3d getPosition(double time) = 0;
    virtual Eigen::Vector3d getVelocity(double time) = 0;
    virtual Eigen::Vector3d getAcceleration(double time) = 0;
+
    virtual double timeStep() { return dt_; };
    virtual double travellingTime() { return travelling_time_; };
+
  
    virtual void setTimeStep(const double &dt) {dt_=dt;};
    virtual void setDuration(const double &travelling_time) {travelling_time_=travelling_time;};  
+
  
    void setInitialPosition(const Eigen::Vector3d &intial_post) { intial_post_ = intial_post; };
+
    Eigen::Vector3d initialPosition() const { return intial_post_; };
    
-   // virtual nav_msgs::Path getSegment() = 0;
-   // virtual geometry_msgs::PoseStamped vector3d2PoseStampedMsg(Eigen::Vector3d position, Eigen::Vector4d orientation) = 0;
  };
  
  #endif  // TRAJECTORY_PUBLISHER_TRAJECTORY_H

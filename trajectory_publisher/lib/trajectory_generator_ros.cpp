@@ -172,8 +172,8 @@ void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
     //  raw_msg.acceleration_or_force.z = a_targ_(2);
     //  raw_reference_pub_.publish(raw_msg);
 
-     ROS_DEBUG_STREAM("Publishing reference position at" << p_targ_.transpose());
-     ROS_DEBUG_STREAM("Publishing reference vel at" << v_targ_.transpose() );
+     ROS_INFO_STREAM_THROTTLE(2, "Publishing reference position at" << p_targ_.transpose());
+     ROS_INFO_STREAM_THROTTLE(2, "Publishing reference vel at" << v_targ_.transpose() );
     //  ROS_DEBUG_STREAM("Publishing reference acc at" << a_targ_.transpose() );
  }
  

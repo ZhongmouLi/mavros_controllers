@@ -57,22 +57,22 @@ switch (trajectory_type_) {
 
 void TrajectoryGenerator::setCircleTrajectory(const Eigen::Vector3d &normal_axis, const double &radius, const double &omega) 
 {
-auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(generator_);
-if (shape_ptr) {
-    shape_ptr->initPrimitives(normal_axis, radius, omega);
-} else {
-    throw std::runtime_error("Generator is not a shapetrajectory; cannot call initPrimitives");
-}
+    auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(generator_);
+    if (shape_ptr) {
+        shape_ptr->initPrimitives(normal_axis, radius, omega);
+    } else {
+        throw std::runtime_error("Generator is not a shapetrajectory; cannot call initPrimitives");
+    }
 
 // generator_->initPrimitives(normal_axis, radius, omega);
 };    
 
 void TrajectoryGenerator::computeTrajectoryAtTime(const double &t) 
 {
-// Compute the trajectory at time t
-target_position_ = generator_->getPosition(t);
-target_velocity_ = generator_->getVelocity(t);
-target_acceleration_ = generator_->getAcceleration(t);
+    // Compute the trajectory at time t
+    target_position_ = generator_->getPosition(t);
+    target_velocity_ = generator_->getVelocity(t);
+    target_acceleration_ = generator_->getAcceleration(t);
 }
 
 
