@@ -6,7 +6,7 @@
        command_input = 1 leads to attcontroller.
   -->
        
-  <arg name="command_input" default="1" />
+  <arg name="command_input" default="attitude_control" />
 
   <!-- manually arm and offboard drone -->
   <arg name="gazebo_simulation" default="true" />

@@ -91,7 +91,7 @@ private:
 
     bool mission_flag_ = false;         ///< Flag to indicate if takeoff is in progress
 
-    ros::Time mission_now_;           ///< Current time for pre-takeoff
+    ros::Time mission_now_;             ///< Current time for pre-takeoff
     ros::Time mission_begin_;           ///< Current time for pre-takeoff
         
     
@@ -112,7 +112,8 @@ private:
     /**
      * @brief Publish body rate commands to the flight controller
      */
-    void pubControlCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude);
+    // void pubControlCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude);
+    void pubControlCommands(const ControlInput control_input) const;
 
     /**
      * @brief Update and publish pose history for trajectory visualization
@@ -175,7 +176,7 @@ public:
     /**
      * @brief Service callback for switching control mode (trigger_rlcontroller)
      */
-    bool ctrltriggerCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
+    // bool ctrltriggerCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
 
     /**
      * @brief Service callback to trigger landing (land)
