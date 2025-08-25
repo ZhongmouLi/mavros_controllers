@@ -82,6 +82,8 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     
     // Simulation and yaw mode
     nh_private_.param<bool>("enable_sim", sim_enable_, true);
+
+    nh_private_.param<double>("mission_time", mission_time_, 20);
     
     bool velocity_yaw;
     nh_private_.param<bool>("velocity_yaw", velocity_yaw, false);
@@ -458,7 +460,6 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         mission_now_ = ros::Time::now();
         double mission_step = (mission_now_ - mission_begin_).toSec();
 
-
         ROS_INFO_STREAM_THROTTLE(2.0, "Mission: begins for  " << mission_step << " seconds");
 
         // for tests
@@ -478,6 +479,12 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         // Update and publish pose history
         updateAndPublishPoseHistory();
         
+        if(mission_step>mission_time_)
+        {
+            ROS_INFO("Mission 2 LANDING");
+            setMissionState(MissionState::LANDING);
+        }
+
         break;
         }
         
@@ -489,7 +496,7 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         Eigen::Vector3d home = homePosition();
         landing_msg.pose.position.x = home(0);
         landing_msg.pose.position.y = home(1);
-        landing_msg.pose.position.z = home(2) + 1.0;
+        landing_msg.pose.position.z = home(2) + 0.05;
         
         landing_msg.pose.orientation.w = 1.0;
         landing_msg.pose.orientation.x = 0.0;
@@ -497,7 +504,12 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         landing_msg.pose.orientation.z = 0.0;
         target_pose_pub_.publish(landing_msg);
 
-        setMissionState(MissionState::LANDED);
+        auto error = (mavPost()-home).norm();
+
+        if (error < 0.1)
+            { 
+                setMissionState(MissionState::LANDED);
+            }
         break;
     }
     case MissionState::LANDED:
@@ -668,38 +680,50 @@ void geomControlROS::pubSystemStatus() {
 
 
 void geomControlROS::dynamicReconfigureCallback(geometric_controller::GeometricControllerConfig &config,
-                                               uint32_t level) {
-
+                                               uint32_t level) 
+{
   // obtain the current values of controller gains
   Eigen::Vector3d Kpos = kPPosController();
   Eigen::Vector3d Kvel = kVPosController();
   double max_feedback_acc = maxFeedbackAcceleration();
 
   
-  if(max_feedback_acc != config.max_acc) {
-      max_feedback_acc = config.max_acc;
-      setMaxFeedbackAcceleration(max_feedback_acc);
-      ROS_INFO("Reconfigure request : max_feedback_acc  = %.2f  ", config.max_acc);
-    }
-    if (Kpos[0] != -config.Kp_x) {
-        Kpos[0] = -config.Kp_x;
-        ROS_INFO("Reconfigure request : Kp_x  = %.2f  ", config.Kp_x);
-    } else if (Kpos[1] != -config.Kp_y) {
-        Kpos[1] = -config.Kp_y;
-        ROS_INFO("Reconfigure request : Kp_y  = %.2f  ", config.Kp_y);
-    } else if (Kpos[2] != -config.Kp_z) {
-        Kpos[2] = -config.Kp_z;
-        ROS_INFO("Reconfigure request : Kp_z  = %.2f  ", config.Kp_z);
-    } else if (Kvel[0] != -config.Kv_x) {
-        Kvel[0] = -config.Kv_x;
-        ROS_INFO("Reconfigure request : Kv_x  = %.2f  ", config.Kv_x);
-    } else if (Kvel[1] != -config.Kv_y) {
-        Kvel[1] = -config.Kv_y;
-        ROS_INFO("Reconfigure request : Kv_y =%.2f  ", config.Kv_y);
-    } else if (Kvel[2] != -config.Kv_z) {
-        Kvel[2] = -config.Kv_z;
-        ROS_INFO("Reconfigure request : Kv_z  = %.2f  ", config.Kv_z);
-    }
+    if(max_feedback_acc != config.max_acc) 
+        {
+        max_feedback_acc = config.max_acc;
+        setMaxFeedbackAcceleration(max_feedback_acc);
+        ROS_INFO("Reconfigure request : max_feedback_acc  = %.2f  ", config.max_acc);
+        }
+    if (Kpos[0] != -config.Kp_x) 
+        {
+            Kpos[0] = -config.Kp_x;
+            ROS_INFO("Reconfigure request : Kp_x  = %.2f  ", config.Kp_x);
+        } 
+    else if (Kpos[1] != -config.Kp_y) 
+        {
+            Kpos[1] = -config.Kp_y;
+            ROS_INFO("Reconfigure request : Kp_y  = %.2f  ", config.Kp_y);
+        } 
+    else if (Kpos[2] != -config.Kp_z) 
+        {
+            Kpos[2] = -config.Kp_z;
+            ROS_INFO("Reconfigure request : Kp_z  = %.2f  ", config.Kp_z);
+        } 
+    else if (Kvel[0] != -config.Kv_x) 
+        {
+            Kvel[0] = -config.Kv_x;
+            ROS_INFO("Reconfigure request : Kv_x  = %.2f  ", config.Kv_x);
+        } 
+    else if (Kvel[1] != -config.Kv_y) 
+        {
+            Kvel[1] = -config.Kv_y;
+            ROS_INFO("Reconfigure request : Kv_y =%.2f  ", config.Kv_y);
+        } 
+    else if (Kvel[2] != -config.Kv_z) 
+        {
+            Kvel[2] = -config.Kv_z;
+            ROS_INFO("Reconfigure request : Kv_z  = %.2f  ", config.Kv_z);
+        }
 
     setPostControlPGains(Kpos);
     setPostControlDGains(Kvel);

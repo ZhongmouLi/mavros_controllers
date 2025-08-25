@@ -94,6 +94,7 @@ private:
     ros::Time mission_now_;             ///< Current time for pre-takeoff
     ros::Time mission_begin_;           ///< Current time for pre-takeoff
         
+    double mission_time_;
     
     ros::Time mavpose_receive_last_;    ///< Previous target update time
 
