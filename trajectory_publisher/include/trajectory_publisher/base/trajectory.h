@@ -60,16 +60,17 @@
   public:
    trajectory() = delete;
    ~trajectory();
-   trajectory(double dt = 0.1, int type = 0);
+   trajectory(const double &dt = 0.1, int type = 0);
+
    // virtual void initPrimitives(Eigen::Vector3d pos, Eigen::Vector3d axis, double omega) = 0;
-   virtual void generatePrimitives(Eigen::Vector3d pos) = 0;
-   virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel) = 0;
-   virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d jerk) = 0;
-   virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d acc,
-                                   Eigen::Vector3d jerk) = 0;
-   virtual Eigen::Vector3d getPosition(double time) = 0;
-   virtual Eigen::Vector3d getVelocity(double time) = 0;
-   virtual Eigen::Vector3d getAcceleration(double time) = 0;
+  //  virtual void generatePrimitives(Eigen::Vector3d pos) = 0;
+  //  virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel) = 0;
+  //  virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d jerk) = 0;
+  //  virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d acc,
+  //                                  Eigen::Vector3d jerk) = 0;
+   virtual Eigen::Vector3d getPosition(const double &time) = 0;
+   virtual Eigen::Vector3d getVelocity(const double &time) = 0;
+   virtual Eigen::Vector3d getAcceleration(const double &time) = 0;
 
    virtual double timeStep() { return dt_; };
    virtual double travellingTime() { return travelling_time_; };

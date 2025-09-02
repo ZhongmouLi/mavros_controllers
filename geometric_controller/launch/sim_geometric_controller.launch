@@ -39,10 +39,14 @@
 
   <node pkg="trajectory_generator" type="trajectory_generator_node" name="trajectory_generator_node" output="screen">
             <!-- write param for them -->
-              <param name="circle_axis_x" value="0" />
+              <!-- <param name="circle_axis_x" value="0" />
               <param name="circle_axis_y" value="0" />
               <param name="circle_axis_z" value="1" />
               <param name="circle_omega" value="1" />
-              <param name="radius" value="2" />
+              <param name="radius" value="2" /> -->
+              <param name="travelling_time" value="5.0" />
+              <param name="target_post_x" value="0.0" />
+              <param name="target_post_y" value="0.0" />
+              <param name="target_post_z" value="1.0" />
    </node>   
   </launch>
