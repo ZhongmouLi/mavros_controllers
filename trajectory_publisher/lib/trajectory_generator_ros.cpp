@@ -50,16 +50,23 @@
      nh_private_.param("circle_axis_z", axis_[2], 1.0);
      nh_private_.param("circle_omega", omega_, 1.0);
      nh_private_.param("radius", radius_, 1.0);
-    //  nh_private_.param("intial_post_x", initial_post_[0], 0.0);
-    //  nh_private_.param("intial_post_y", initial_post_[1], 0.0);
-    //  nh_private_.param("intial_post_z", initial_post_[2], 1.0);
+
+     nh_private_.param("travelling_time", travelling_time_, 5.0);
      
+     nh_private_.param("target_post_x", target_post_[0], 0.0);
+     nh_private_.param("target_post_y", target_post_[1], 0.0);
+     nh_private_.param("target_post_z", target_post_[2], 1.0);
 
     generator_ = std::make_shared<TrajectoryGenerator>(0.01, 1);
-    generator_->setTrajectoryType("CIRCLE");
+
+    // generator_->setTrajectoryType("CIRCLE");
+    generator_->setTrajectoryType("POLYNOMIAL");
+
     generator_->initializeGenerator();
+
     // generator_->setHomePosition(initial_post_);
-    generator_->setCircleTrajectory(axis_, radius_, omega_);
+    // generator_->setCircleTrajectory(axis_, radius_, omega_);
+   
 
      // Publishers
      reference_pub_ = nh_.advertise<geometry_msgs::TwistStamped>("reference/setpoint", 1);
@@ -112,9 +119,16 @@
 {
     // Update the takeoff position based on the received message
     initial_post_ = toEigen(msg.pose.position);
-    generator_->setHomePosition(initial_post_);
+
+    if (!generator_->isHomeSet())
+    {
+        generator_->setHomePosition(initial_post_);
+        target_post_ = target_post_ + initial_post_;
+
+        generator_->setPolyTrajectory(target_post_, travelling_time_);
+    }
+
     ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is set to: " << initial_post_.transpose());
-    is_initial_position_set_ = true;
     
 }
 
@@ -127,7 +141,7 @@ void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
 
     // check initial position and active state
     // If the initial position is not set or the trajectory is not active, do not publish
-    if (!is_initial_position_set_)
+    if (!generator_->isHomeSet())
     {
         ROS_INFO_THROTTLE(1.0, "Initial position of trajectory is not set, waiting for /start service call...");
 
@@ -156,21 +170,6 @@ void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
      twist_msg.twist.linear.z = v_targ_(2);
      reference_pub_.publish(twist_msg);
  
-    //  mavros_msgs::PositionTarget raw_msg;
-    //  raw_msg.header.stamp = ros::Time::now();
-    //  raw_msg.header.frame_id = "map";
-    //  raw_msg.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
-    //  raw_msg.type_mask = 0;
-    //  raw_msg.position.x = p_targ_(0);
-    //  raw_msg.position.y = p_targ_(1);
-    //  raw_msg.position.z = p_targ_(2);
-    //  raw_msg.velocity.x = v_targ_(0);
-    //  raw_msg.velocity.y = v_targ_(1);
-    //  raw_msg.velocity.z = v_targ_(2);
-    //  raw_msg.acceleration_or_force.x = a_targ_(0);
-    //  raw_msg.acceleration_or_force.y = a_targ_(1);
-    //  raw_msg.acceleration_or_force.z = a_targ_(2);
-    //  raw_reference_pub_.publish(raw_msg);
 
      ROS_INFO_STREAM_THROTTLE(2, "Publishing reference position at" << p_targ_.transpose());
      ROS_INFO_STREAM_THROTTLE(2, "Publishing reference vel at" << v_targ_.transpose() );

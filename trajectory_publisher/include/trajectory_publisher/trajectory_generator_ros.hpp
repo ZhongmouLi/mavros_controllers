@@ -58,6 +58,11 @@ private:
     double radius_;           // Radius of the circle
     double omega_;            // Angular speed (rad/s)
 
+    // Polynomial trajectory configuration
+    Eigen::Vector3d target_post_{0,0,1}; // Target position for polynomial trajectory
+    
+    double travelling_time_{1.0};        // Duration of the polynomial trajectory
+
     // Timing
     ros::Time start_time_;    // Time when the trajectory was started
 

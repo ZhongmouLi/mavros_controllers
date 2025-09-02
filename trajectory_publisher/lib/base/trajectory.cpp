@@ -46,7 +46,7 @@
  
  };
  
- trajectory::trajectory(double dt, int type):dt_(dt), type_(type)
+ trajectory::trajectory(const double &dt, int type):dt_(dt), type_(type)
  {
  
  };
