@@ -1,22 +1,24 @@
 trajectory:
   frame_id: "map"
   description: "Sample multi-segment path"
-
   segments:
     - id: seg_01
+      isRelative: true
       type: "POLYNOMIAL"
-      duration: 2
+      duration: 10
       start:
-        position: [0.0, 0.0, 0.5]
+        position: [0.0, 0.0, 0.0]
         yaw: 0.0
       end:
-        position: [1.0, 0.0, 0.5]
+        position: [1.0, 0.0, 0.0]
         yaw: 0.0
 
     - id: seg_02
+      isRelative: true
       type: "CIRCLE"
       duration: 2.5
       circle_axis: [0.0, 0.0, 1]
+      radius: 1.0
       circle_omega: 0.5
-      intial_post_x: [0.0, 0.0, 1]
+      initial_pos: [0.0, 0.0, 1]
 

@@ -7,7 +7,8 @@
 #include <ros/package.h>
 #include <vector>
 #include <array>
-
+#include <sstream>
+#include <iomanip> 
 
 enum class TrajectoryType {
     POLYNOMIAL,
@@ -17,27 +18,59 @@ enum class TrajectoryType {
 };
 
 
-struct TrajectoryStrct {
+struct TrajectoryStrct{
+
     std::string id;
+
+    bool isRelative{true};
+
+    Eigen::Vector3d off_set{0,0,0};
+
     TrajectoryType type{TrajectoryType::STATIONARY};  // use enum instead of string
+
     double duration{0.0};
+
     virtual ~TrajectoryStrct() = default;
 };
 
 // Polynomial trajectory
 struct PolynomialTrajStrct : public TrajectoryStrct {
-    std::array<double, 3> start_position{};
+
+    Eigen::Vector3d start_position{};
+
     double start_yaw{0.0};
-    std::array<double, 3> end_position{};
+
+    Eigen::Vector3d end_position{};
+
     double end_yaw{0.0};
+
+    Eigen::Vector3d startPosition() 
+    {
+        if (isRelative) {
+            return off_set + start_position;
+        } else {
+            return start_position;
+        }
+    }; 
+
+    Eigen::Vector3d endPosition() 
+    {
+        if (isRelative) {
+            return off_set + end_position;
+        } else {
+            return end_position;
+        }
+    }; 
 };
 
 // Circle trajectory
 struct CircleTrajStrct : public TrajectoryStrct {
-    std::array<double, 3> circle_axis{};
+
+    Eigen::Vector3d circle_axis{};
+
     double circle_omega{0.0};
+
     double radius{1.0};
-    std::array<double, 3> initial_pos{};
 };
 
 class TrajectoryGenerator {
@@ -60,7 +93,23 @@ class TrajectoryGenerator {
         Eigen::Vector3d init_position_{0,0,0}; // Initial position
         bool isInitPositionSet_ = false;
 
+
         double dt_{0.01}; // Time step
+
+
+        bool is_trajectory_offset_set_ = false;
+
+        bool is_trajectory_configured_ = false;
+
+
+        // set circle trajectory 
+        void setCircleTrajectory(const Eigen::Vector3d &initial_position, const Eigen::Vector3d &normal_axis, const double &radius, const double &omega) ;
+
+        void setPolyTrajectory(const Eigen::Vector3d &target_post, const double &travelling_time); 
+
+        void setPolyTrajectory(const Eigen::Vector3d &start_post, const Eigen::Vector3d &target_post, const double &travelling_time); 
+
+        void setTrajectoryType(const std::string& trajectory_type);
 
     public:
 
@@ -79,6 +128,8 @@ class TrajectoryGenerator {
         void setInitPosition(const Eigen::Vector3d &Init_position);
 
 
+        void setOffsetForAllSegments(const Eigen::Vector3d& off);
+
         void setTrajectoryType(const TrajectoryType &trajectory_type) ;
 
 
@@ -87,63 +138,39 @@ class TrajectoryGenerator {
 
         void chooseAndConfigureByTime(const double &t) ;
 
-        Eigen::Vector3d initPosition() const {
-            return init_position_;
-        }
-
-
-        bool isInitPositionSet() const {
-            return isInitPositionSet_;
-        }
-
-
-        Eigen::Vector3d homePosition() const {
-            return homoe_position_;
-        }
-
-        bool isHomeSet() const {
-            return isHomeSet_;
-        }
-
-
-
-        // double circleRadius() const {
-        //     auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(ptr_trajectory_);
-        //     return shape_ptr->circleRadius();
-        // }
-
-
-        // Eigen::Vector3d circleAxis() const {
-        //     auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(ptr_trajectory_);
-        //     return shape_ptr->circleAxis();
-        // }
-
-        // double circleOmega() const {
-        //     auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(ptr_trajectory_);
-        //     return shape_ptr->circleOmega();
-        // }
-
-
-
-        // Set the trajectory type
-        void setTrajectoryType(const std::string& trajectory_type);
-
-        // intilialize the generator based on the type
-        void initializeGenerator();
-
-
-        // set circle trajectory 
-        void setCircleTrajectory(const Eigen::Vector3d &initial_position, const Eigen::Vector3d &normal_axis, const double &radius, const double &omega) ;
-
-        void setPolyTrajectory(const Eigen::Vector3d &target_post, const double &travelling_time); 
-
-        void setPolyTrajectory(const Eigen::Vector3d &start_post, const Eigen::Vector3d &target_post, const double &travelling_time); 
-
-
+      
         void computeTrajectoryAtTime(const double &t); 
+
+
+    public:
+
+        Eigen::Vector3d currentStartPosition() const;
+
+        Eigen::Vector3d currentEndPosition() const;
+
+        std::string currentTrajectoryType() const;
+
+        std::string currentSegTrajInfor() const;
+
+        std::string TotalTrajectoryInfor() const ;
+
 
         Eigen::Vector3d targetPosition() const { return target_position_; }
         Eigen::Vector3d targetVelocity() const { return target_velocity_; }
         Eigen::Vector3d targetAcceleration() const { return target_acceleration_; }
 
-    };
+        Eigen::Vector3d initPosition() const {return init_position_;}
+
+
+        bool isInitPositionSet() const {return isInitPositionSet_;}
+
+
+        Eigen::Vector3d homePosition() const {return homoe_position_;}
+
+        bool isHomeSet() const {return isHomeSet_;};
+
+        bool isTrajectoryOffsetSet() const {return is_trajectory_offset_set_;};
+
+        bool isTrajectoryConfigured() const {return is_trajectory_configured_;};
+
+};

@@ -121,6 +121,9 @@
     if (!ptr_traj_generator_->isInitPositionSet())
     {
         ptr_traj_generator_->setInitPosition(initial_post_);
+
+        ptr_traj_generator_->setOffsetForAllSegments(initial_post_);
+        ROS_INFO_STREAM("Offset of all trajectory segments is set to: " << initial_post_.transpose());
     }
 
     ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is set to: " << initial_post_.transpose());
@@ -129,13 +132,17 @@
 
 void TrajectoryGeneratorROS::inputTrajectoryConfig()
 {
+    ROS_INFO_STREAM("Load param from: " << yaml_path_);
+
     YAML::Node cfg = YAML::LoadFile(yaml_path_);
 
     const auto segments = cfg["trajectory"]["segments"];
 
-    for (const auto& seg : segments) {
+    for (const auto& seg : segments) 
+    {
         std::string id   = seg["id"].as<std::string>();
         std::string type = seg["type"].as<std::string>();
+        bool isRelative = seg["isRelative"].as<bool>();
         double dur       = seg["duration"].as<double>();
 
         if (type == "POLYNOMIAL") {
@@ -143,21 +150,20 @@ void TrajectoryGeneratorROS::inputTrajectoryConfig()
             poly.id = id;
             poly.type = TrajectoryType::POLYNOMIAL;
             poly.duration = dur;
-
-            poly.start_position = seg["start"]["position"].as<std::array<double,3>>();
+            poly.isRelative = isRelative;
+            // poly.start_position = seg["start"]["position"].as<std::array<double,3>>();
             poly.start_yaw      = seg["start"]["yaw"].as<double>();
-            poly.end_position   = seg["end"]["position"].as<std::array<double,3>>();
+
+            auto start_position = seg["start"]["position"].as<std::array<double,3>>();
+            poly.start_position = Eigen::Map<const Eigen::Vector3d>(start_position.data());
+
+            auto end_position = seg["end"]["position"].as<std::array<double,3>>();
+            poly.end_position = Eigen::Map<const Eigen::Vector3d>(end_position.data());
+
+            // poly.end_position   = seg["end"]["position"].as<std::array<double,3>>();
             poly.end_yaw        = seg["end"]["yaw"].as<double>();
 
             // Print with ROS_INFO (printf-style)
-            ROS_INFO(
-            "Loaded POLYNOMIAL segment: id=%s dur=%.3f "
-            "start=[%.3f, %.3f, %.3f] start_yaw=%.3f "
-            "end=[%.3f, %.3f, %.3f] end_yaw=%.3f",
-            poly.id.c_str(), poly.duration,
-            poly.start_position[0], poly.start_position[1], poly.start_position[2], poly.start_yaw,
-            poly.end_position[0],   poly.end_position[1],   poly.end_position[2],   poly.end_yaw
-            );
 
             ptr_traj_generator_->inputTrajectoryStrcutData(poly);
         }
@@ -165,20 +171,34 @@ void TrajectoryGeneratorROS::inputTrajectoryConfig()
             CircleTrajStrct circle;
             circle.id = id;
             circle.type = TrajectoryType::CIRCLE;
+            circle.isRelative = isRelative;
             circle.duration = dur;
 
-            circle.circle_axis  = seg["circle_axis"].as<std::array<double,3>>();
+            // circle.circle_axis  = seg["circle_axis"].as<std::array<double,3>>();
+            auto axis = seg["circle_axis"].as<std::array<double,3>>();
+            circle.circle_axis = Eigen::Map<const Eigen::Vector3d>(axis.data());
+
+
+            circle.radius       = seg["radius"].as<double>();
+            
             circle.circle_omega = seg["circle_omega"].as<double>();
 
-            if (seg["initial_pos"]) {
-                circle.initial_pos = seg["initial_pos"].as<std::array<double,3>>();
-            } else {
-                circle.initial_pos = seg["intial_post_x"].as<std::array<double,3>>(); // fallback typo
-            }
+            // if (seg["initial_pos"]) {
+            //     circle.initial_pos = seg["initial_pos"].as<std::array<double,3>>();
+            // } else {
+            //     circle.initial_pos = seg["intial_post_x"].as<std::array<double,3>>(); // fallback typo
+            // }
+            // Eigen::Map<Eigen::Vector3d>(circle.initial_pos .data()) = ;
+            // circle.initial_pos = initial_post_;
+ 
 
             ptr_traj_generator_->inputTrajectoryStrcutData(circle);
         }
     }
+
+    auto trajectory_info = ptr_traj_generator_->TotalTrajectoryInfor();
+
+    ROS_INFO_STREAM("Loaded trajectory configuration:\n" << trajectory_info);
 }
 
 
@@ -205,7 +225,18 @@ void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
       }
         // This callback runs at 100Hz, so we can compute the trajectory at this rate
         // Get the elapsed time since the trajectory started
-     
+
+    Eigen::Vector3d current_start_position = ptr_traj_generator_->currentStartPosition();
+    ROS_INFO_STREAM_THROTTLE(1.0, "Current start position of trajectory is: " << current_start_position.transpose());
+
+    Eigen::Vector3d current_end_position = ptr_traj_generator_->currentEndPosition();
+    ROS_INFO_STREAM_THROTTLE(1.0, "Current end position of trajectory is: " << current_end_position.transpose());
+
+
+    auto info = ptr_traj_generator_->currentSegTrajInfor();
+
+    ROS_INFO_STREAM_THROTTLE(5, "Current active trajectory segment info: " << info);
+
       // compute the reference state
      updateReference();
  

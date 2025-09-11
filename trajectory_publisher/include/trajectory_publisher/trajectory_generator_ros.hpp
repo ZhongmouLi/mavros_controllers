@@ -58,15 +58,15 @@ private:
     Eigen::Vector3d a_targ_;  // Target acceleration [ax, ay, az]
 
     // Circle trajectory configuration
-    Eigen::Vector3d initial_post_{0,0,1};  // Center position of the circle
+    Eigen::Vector3d initial_post_{0,0,0};  // Center position of the circle
     Eigen::Vector3d axis_;    // Axis of rotation (normal vector)
     double radius_;           // Radius of the circle
     double omega_;            // Angular speed (rad/s)
 
-    // Polynomial trajectory configuration
-    Eigen::Vector3d target_post_{0,0,1}; // Target position for polynomial trajectory
+    // // Polynomial trajectory configuration
+    // Eigen::Vector3d target_post_{0,0,1}; // Target position for polynomial trajectory
     
-    double travelling_time_{1.0};        // Duration of the polynomial trajectory
+    // double travelling_time_{1.0};        // Duration of the polynomial trajectory
 
     // Timing
     ros::Time start_time_;    // Time when the trajectory was started
