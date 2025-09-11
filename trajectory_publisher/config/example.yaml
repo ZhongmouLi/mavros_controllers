@@ -2,11 +2,6 @@ trajectory:
   frame_id: "map"
   description: "Sample multi-segment path"
 
-  # (optional) defaults applied if a segment omits the field
-  defaults:
-    type: "minjerk"     # allowed: line, minjerk, polynomial, cubic_spline
-    duration: 2.0       # seconds
-
   segments:
     - id: seg_01
       type: "POLYNOMIAL"

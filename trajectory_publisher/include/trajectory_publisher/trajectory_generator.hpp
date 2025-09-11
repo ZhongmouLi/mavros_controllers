@@ -4,58 +4,90 @@
 #include "trajectory_publisher/base/trajectory.h"
 #include "trajectory_publisher/base/shapetrajectory.h"
 #include "trajectory_publisher/base/polynomialtrajectory.h"
-#include <yaml-cpp/yaml.h>
 #include <ros/package.h>
 #include <vector>
+#include <array>
 
+
+enum class TrajectoryType {
+    POLYNOMIAL,
+    CIRCLE,
+    LAMNISCATE,
+    STATIONARY
+};
+
+
+struct TrajectoryStrct {
+    std::string id;
+    TrajectoryType type{TrajectoryType::STATIONARY};  // use enum instead of string
+    double duration{0.0};
+    virtual ~TrajectoryStrct() = default;
+};
+
+// Polynomial trajectory
+struct PolynomialTrajStrct : public TrajectoryStrct {
+    std::array<double, 3> start_position{};
+    double start_yaw{0.0};
+    std::array<double, 3> end_position{};
+    double end_yaw{0.0};
+};
+
+// Circle trajectory
+struct CircleTrajStrct : public TrajectoryStrct {
+    std::array<double, 3> circle_axis{};
+    double circle_omega{0.0};
+    double radius{1.0};
+    std::array<double, 3> initial_pos{};
+};
 
 class TrajectoryGenerator {
 
     private:
-        std::shared_ptr<trajectory> generator_;
 
-        double dt_; // Sampling time
-        double T_;  // Duration of the trajectory
-        int type_;  // Type of trajectory
-        int degree_;      // Degree of polynomial
+        std::vector<std::shared_ptr<TrajectoryStrct>> v_trajectory_strct_;
 
-        Eigen::Vector3d init_post_{0,0,0}; // Initial position
+        std::shared_ptr<TrajectoryStrct> active_traj_config_ = nullptr;
 
-        // std::vector<Eigen::Vector3d> v_waypoint_; // vector of waypoints
-
-        // std::vector<double> v_travelling_time_; // vector of travelling time
-
-        bool isHomeSet_ = false; // flag to check if home position is set
-
-        // enum TrajectoryType 
-        enum TrajectoryType {
-                POLYNOMIAL,
-                CIRCLE,
-                LAMNISCATE,
-                STATIONARY
-            };
-        
-        TrajectoryType trajectory_type_;    
-
+        std::shared_ptr<trajectory> generator_ = nullptr;
 
         Eigen::Vector3d target_position_{0,0,0}; // Target position
         Eigen::Vector3d target_velocity_{0,0,0}; // Target velocity
         Eigen::Vector3d target_acceleration_{0,0,0}; // Target acceleration
 
-    public:
+        Eigen::Vector3d homoe_position_{0,0,0}; // Home position
+        bool isHomeSet_ = false;
 
+        Eigen::Vector3d init_position_{0,0,0}; // Initial position
+
+        double dt_{0.01}; // Time step
+
+    public:
 
         // default constructor
         TrajectoryGenerator() = delete;
 
+        TrajectoryGenerator(const double &dt);
+
         TrajectoryGenerator(const double &dt, const int &type);
+
 
         ~TrajectoryGenerator() ;
 
         void setHomePosition(const Eigen::Vector3d &home_position);
 
+        void setInitPosition(const Eigen::Vector3d &Init_position);
+
+
+        void setTrajectoryType(const TrajectoryType &trajectory_type) ;
+
+
+        void inputTrajectoryStrcutData(const PolynomialTrajStrct &poly) ;
+        void inputTrajectoryStrcutData(const CircleTrajStrct &circle) ;
+
+        void chooseAndConfigureByTime(const double &t) ;
+
         Eigen::Vector3d initPosition() const {
-            return init_post_;
+            return init_position_;
         }
 
         double circleRadius() const {
@@ -76,7 +108,7 @@ class TrajectoryGenerator {
 
 
         Eigen::Vector3d homePosition() const {
-            return init_post_;
+            return homoe_position_;
         }
 
         bool isHomeSet() const {
@@ -91,9 +123,11 @@ class TrajectoryGenerator {
 
 
         // set circle trajectory 
-        void setCircleTrajectory(const Eigen::Vector3d &normal_axis, const double &radius, const double &omega) ;
+        void setCircleTrajectory(const Eigen::Vector3d &initial_position, const Eigen::Vector3d &normal_axis, const double &radius, const double &omega) ;
 
         void setPolyTrajectory(const Eigen::Vector3d &target_post, const double &travelling_time); 
+
+        void setPolyTrajectory(const Eigen::Vector3d &start_post, const Eigen::Vector3d &target_post, const double &travelling_time); 
 
 
         void computeTrajectoryAtTime(const double &t); 

@@ -559,6 +559,20 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
     
 }
 
+void geomControlROS::takeoffPostloopCallback(const ros::TimerEvent& event)
+{
+
+    // Publish the takeoff pose
+    if (!isHomePositionSet()) {
+        ROS_WARN_THROTTLE(2.0, "Home position is not set yet, cannot publish takeoff pose.");
+        return;
+    }
+
+    pubTakeoffPose();
+    ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is published: " 
+        << takeoffTargetPosition().transpose());
+}
+
 void geomControlROS::pubReferencePose(const Eigen::Vector3d& target_position, const Eigen::Vector4d& target_attitude)
 {
     // lockstep
@@ -650,6 +664,27 @@ void geomControlROS::pubControlCommands(const ControlInput control_input) const
 //     // publish to topic /command/bodyrate_command
 //     angularVelPub_.publish(msg);
 // }
+
+void geomControlROS::pubTakeoffPose()
+{
+    geometry_msgs::PoseStamped takeoff_pose;
+    takeoff_pose.header.stamp = ros::Time::now();
+    takeoff_pose.header.frame_id = "map";  // Ensure consistent frame, if needed
+
+    // Use the accessor method to get takeoff position
+    Eigen::Vector3d takeoff_position = takeoffTargetPosition();
+    takeoff_pose.pose.position.x = takeoff_position(0);
+    takeoff_pose.pose.position.y = takeoff_position(1);
+    takeoff_pose.pose.position.z = takeoff_position(2);
+
+    takeoff_pose.pose.orientation.w = 1.0;
+    takeoff_pose.pose.orientation.x = 0.0;
+    takeoff_pose.pose.orientation.y = 0.0;
+    takeoff_pose.pose.orientation.z = 0.0;
+
+    takeoffPosePub_.publish(takeoff_pose);
+}
+
 
 void geomControlROS::updateAndPublishPoseHistory()
 {

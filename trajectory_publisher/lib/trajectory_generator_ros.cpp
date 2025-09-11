@@ -58,7 +58,7 @@
     std::string pkg_path = ros::package::getPath("trajectory_generator");
     std::string yaml_path_default = pkg_path + "/config/example.yaml";
 
-    nh.param<std::string>("config_file", yaml_path, yaml_path_default);
+    nh.param<std::string>("config_file", yaml_path_, yaml_path_default);
 
      // Initialize generator
     //  generator_ = std::make_shared<TrajectoryGenerator>(0.01,1);
@@ -73,9 +73,9 @@
  
     // generator_ = std::make_shared<TrajectoryGenerator>(0.01, 1);
     // generator_->setTrajectoryType("CIRCLE");
-    generator_->setTrajectoryType("POLYNOMIAL");
+    // generator_->setTrajectoryType("POLYNOMIAL");
 
-    generator_->initializeGenerator();
+    // generator_->initializeGenerator();
 
     // generator_->setHomePosition(initial_post_);
     // generator_->setCircleTrajectory(axis_, radius_, omega_);
@@ -97,6 +97,8 @@
  
      ROS_INFO("TrajectoryGeneratorROS initialized, waiting for /start service call...");
  }
+
+
  
  bool TrajectoryGeneratorROS::startCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res) {
      if (req.data) {
@@ -144,6 +146,51 @@
     ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is set to: " << initial_post_.transpose());
     
 }
+
+void TrajectoryGeneratorROS::inputTrajectoryConfig()
+{
+    YAML::Node cfg = YAML::LoadFile(yaml_path_);
+
+    const auto segments = cfg["trajectory"]["segments"];
+
+    for (const auto& seg : segments) {
+        std::string id   = seg["id"].as<std::string>();
+        std::string type = seg["type"].as<std::string>();
+        double dur       = seg["duration"].as<double>();
+
+        if (type == "POLYNOMIAL") {
+            PolynomialTrajStrct poly;
+            poly.id = id;
+            poly.type = TrajectoryType::POLYNOMIAL;
+            poly.duration = dur;
+
+            poly.start_position = seg["start"]["position"].as<std::array<double,3>>();
+            poly.start_yaw      = seg["start"]["yaw"].as<double>();
+            poly.end_position   = seg["end"]["position"].as<std::array<double,3>>();
+            poly.end_yaw        = seg["end"]["yaw"].as<double>();
+
+            generator_->inputTrajectoryStrcutData(poly);
+        }
+        else if (type == "CIRCLE") {
+            CircleTrajStrct circle;
+            circle.id = id;
+            circle.type = TrajectoryType::CIRCLE;
+            circle.duration = dur;
+
+            circle.circle_axis  = seg["circle_axis"].as<std::array<double,3>>();
+            circle.circle_omega = seg["circle_omega"].as<double>();
+
+            if (seg["initial_pos"]) {
+                circle.initial_pos = seg["initial_pos"].as<std::array<double,3>>();
+            } else {
+                circle.initial_pos = seg["intial_post_x"].as<std::array<double,3>>(); // fallback typo
+            }
+
+            generator_->inputTrajectoryStrcutData(circle);
+        }
+    }
+}
+
 
 void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
      if (!is_active_) return;

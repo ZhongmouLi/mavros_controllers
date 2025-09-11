@@ -55,6 +55,18 @@ void polynomialtrajectory::initPrimitives(const Eigen::Vector3d &target_post, co
 
 }
 
+void polynomialtrajectory::initPrimitives(const Eigen::Vector3d &start_post, const Eigen::Vector3d &target_post, const double &travelling_time)
+{
+
+    intial_post_ = start_post;
+
+    travelling_time_ = travelling_time;
+
+    distance_initial2target_post_ = target_post - intial_post_;
+
+}
+
+
 Eigen::Vector3d polynomialtrajectory::getPosition(const double &current_time)
 {
   double factor = current_time/travelling_time_;
