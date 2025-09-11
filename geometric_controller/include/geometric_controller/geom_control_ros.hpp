@@ -52,6 +52,7 @@ private:
     ros::Publisher target_pose_pub_;     ///< Publish target position to MAVROS (mavros/setpoint_position/local)
     ros::Publisher posehistoryPub_;      ///< Publish path history (geometric_controller/path)
     ros::Publisher systemstatusPub_;     ///< Publish system status (mavros/companion_process/status)
+    ros::Publisher takeoffPosePub_;      ///< Publish takeoff pose (reference/takeoff_pose)
 
     // ------------------ Service Clients ------------------
 
@@ -68,6 +69,7 @@ private:
 
     ros::Timer cmdloop_timer_;            ///< Timer for command loop (10ms rate)
     ros::Timer statusloop_timer_;         ///< Timer for status loop (1s rate)
+    ros::Timer takeoffPostloop_timer_;    ///< Timer for post-takeoff loop (10ms rate)
 
     // ------------------ Other Members ------------------
 
@@ -128,6 +130,12 @@ private:
     void pubSystemStatus();
 
     void pubTargetPose2PX4Controller(const Eigen::Vector3d& target_position);
+
+    /**
+     * @brief position after takeoff
+     */
+    void takeoffPostloopCallback(const ros::TimerEvent& event);
+    void pubTakeoffPose();
 
 
 public:
@@ -190,6 +198,8 @@ public:
      * @brief Main control command loop timer callback (0.01s)
      */
     void cmdloopCallback(const ros::TimerEvent& event);
+
+
 
     /**
      * @brief System status monitoring timer callback (1s)

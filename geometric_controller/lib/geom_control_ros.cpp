@@ -11,13 +11,14 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     referenceSub_ = nh_.subscribe("reference/setpoint", 1, &geomControlROS::targetCallback, this, ros::TransportHints().tcpNoDelay());
     yawreferenceSub_ = nh_.subscribe("reference/yaw", 1, &geomControlROS::yawtargetCallback, this, ros::TransportHints().tcpNoDelay());
     mavstateSub_ = nh_.subscribe("mavros/state", 1, &geomControlROS::mavstateCallback, this, ros::TransportHints().tcpNoDelay());
-    mavVICONposeSub_ = nh_.subscribe("vicon/drone", 1, &geomControlROS::mavVICONposeCallback, this, ros::TransportHints().tcpNoDelay());
     mavGPSposeSub_ = nh_.subscribe("mavros/local_position/pose", 1, &geomControlROS::mavGPSposeCallback, this, ros::TransportHints().tcpNoDelay());
     mavtwistSub_ = nh_.subscribe("mavros/local_position/velocity_local", 1, &geomControlROS::mavtwistCallback, this, ros::TransportHints().tcpNoDelay());
 
     // ------------------ Setup Publishers ------------------
     angularVelPub_ = nh_.advertise<mavros_msgs::AttitudeTarget>("command/bodyrate_command", 1);
     referencePosePub_ = nh_.advertise<geometry_msgs::PoseStamped>("reference/pose", 1);
+    takeoffPosePub_ = nh_.advertise<geometry_msgs::PoseStamped>("reference/takeoff_pose", 1);
+
     // to remove
     target_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
     posehistoryPub_ = nh_.advertise<nav_msgs::Path>("geometric_controller/path", 10);
@@ -33,6 +34,7 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     // ------------------ Setup Timers ------------------
     cmdloop_timer_ = nh_.createTimer(ros::Duration(0.01), &geomControlROS::cmdloopCallback, this);
     statusloop_timer_ = nh_.createTimer(ros::Duration(1.0), &geomControlROS::statusloopCallback, this);
+    takeoffPostloop_timer_ = nh_.createTimer(ros::Duration(0.01), &geomControlROS::takeoffPostloopCallback, this);
 
     // Initialize time variables
     last_request_ = ros::Time::now();
@@ -43,14 +45,21 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
 
 
     // ------------------ Load Parameters ------------------
+
     
+
     // System identification
     std::string mav_name;
     nh_private_.param<std::string>("mavname", mav_name, "iris");
 
-    nh_private_.param<bool>("use_vicon", use_vicon_, false);
+    nh_private_.param<bool>("use_vicon", use_vicon_, true);
 
-    nh_private_.param<bool>("use_gps", use_gps_, true);
+    nh_private_.param<bool>("use_gps", use_gps_, false);
+
+    std::string vicon_topic;
+    nh_private_.param<std::string>("vicon_topic", vicon_topic, "/vicon/drone");
+
+    mavVICONposeSub_ = nh_.subscribe(vicon_topic, 1, &geomControlROS::mavVICONposeCallback, this, ros::TransportHints().tcpNoDelay());
 
     // Controller mode using attitude control or body rate control
     std::string ctrl_mode;

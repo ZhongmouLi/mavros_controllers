@@ -3,14 +3,14 @@
 TrajectoryGenerator:: TrajectoryGenerator(const double &dt, const int &type):
 dt_(dt), T_(0.0), type_(type), degree_(0)
 {
-// Initialize the generator with default values
-generator_ = nullptr;
+    // Initialize the generator with default values
+    generator_ = nullptr;
 }
 
 // Destructor
 TrajectoryGenerator::~TrajectoryGenerator() 
 {
-generator_.reset();
+    generator_.reset();
 }
 
 
@@ -31,11 +31,19 @@ if (trajectory_type == "POLYNOMIAL") {
 };
 
 
+void TrajectoryGenerator::setHomePosition(const Eigen::Vector3d &home_position) 
+{
+            init_post_ = home_position;
+            generator_->setInitialPosition(init_post_);
+            isHomeSet_ = true;
+}
+
+
 void TrajectoryGenerator::initializeGenerator() 
 {
 switch (trajectory_type_) {
     case POLYNOMIAL:
-        generator_ = std::make_shared<polynomialtrajectory>(dt_, 0);
+        generator_ = std::make_shared<polynomialtrajectory>(dt_);
         break;
 
     case CIRCLE:
@@ -57,22 +65,34 @@ switch (trajectory_type_) {
 
 void TrajectoryGenerator::setCircleTrajectory(const Eigen::Vector3d &normal_axis, const double &radius, const double &omega) 
 {
-auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(generator_);
-if (shape_ptr) {
-    shape_ptr->initPrimitives(normal_axis, radius, omega);
-} else {
-    throw std::runtime_error("Generator is not a shapetrajectory; cannot call initPrimitives");
-}
+    auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(generator_);
+    if (shape_ptr) {
+        shape_ptr->initPrimitives(normal_axis, radius, omega);
+    } else {
+        throw std::runtime_error("Generator is not a shapetrajectory; cannot call initPrimitives");
+    }
 
 // generator_->initPrimitives(normal_axis, radius, omega);
 };    
 
+
+void TrajectoryGenerator::setPolyTrajectory(const Eigen::Vector3d &target_post, const double &travelling_time) 
+{
+    auto shape_ptr = std::dynamic_pointer_cast<polynomialtrajectory>(generator_);
+    if (shape_ptr) {
+        shape_ptr->initPrimitives(target_post, travelling_time);
+    } else {
+        throw std::runtime_error("Generator is not a polynomialtrajectory; cannot call initPrimitives");
+    }
+};   
+
+
 void TrajectoryGenerator::computeTrajectoryAtTime(const double &t) 
 {
-// Compute the trajectory at time t
-target_position_ = generator_->getPosition(t);
-target_velocity_ = generator_->getVelocity(t);
-target_acceleration_ = generator_->getAcceleration(t);
+    // Compute the trajectory at time t
+    target_position_ = generator_->getPosition(t);
+    target_velocity_ = generator_->getVelocity(t);
+    target_acceleration_ = generator_->getAcceleration(t);
 }
 
 

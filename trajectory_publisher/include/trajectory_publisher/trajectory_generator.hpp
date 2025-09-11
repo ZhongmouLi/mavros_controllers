@@ -19,11 +19,13 @@ class TrajectoryGenerator {
         int type_;  // Type of trajectory
         int degree_;      // Degree of polynomial
 
-        Eigen::Vector3d init_post{0,0,0}; // Initial position
+        Eigen::Vector3d init_post_{0,0,0}; // Initial position
 
         // std::vector<Eigen::Vector3d> v_waypoint_; // vector of waypoints
 
         // std::vector<double> v_travelling_time_; // vector of travelling time
+
+        bool isHomeSet_ = false; // flag to check if home position is set
 
         // enum TrajectoryType 
         enum TrajectoryType {
@@ -43,7 +45,6 @@ class TrajectoryGenerator {
     public:
 
 
-        
         // default constructor
         TrajectoryGenerator() = delete;
 
@@ -51,13 +52,10 @@ class TrajectoryGenerator {
 
         ~TrajectoryGenerator() ;
 
-        void setHomePosition(const Eigen::Vector3d &home_position) {
-            init_post = home_position;
-            generator_->setInitialPosition(init_post);
-        }
+        void setHomePosition(const Eigen::Vector3d &home_position);
 
         Eigen::Vector3d initPosition() const {
-            return init_post;
+            return init_post_;
         }
 
         double circleRadius() const {
@@ -78,7 +76,11 @@ class TrajectoryGenerator {
 
 
         Eigen::Vector3d homePosition() const {
-            return init_post;
+            return init_post_;
+        }
+
+        bool isHomeSet() const {
+            return isHomeSet_;
         }
 
         // Set the trajectory type
@@ -90,6 +92,8 @@ class TrajectoryGenerator {
 
         // set circle trajectory 
         void setCircleTrajectory(const Eigen::Vector3d &normal_axis, const double &radius, const double &omega) ;
+
+        void setPolyTrajectory(const Eigen::Vector3d &target_post, const double &travelling_time); 
 
 
         void computeTrajectoryAtTime(const double &t); 

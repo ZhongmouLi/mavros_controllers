@@ -60,27 +60,30 @@
   public:
    trajectory() = delete;
    ~trajectory();
-   trajectory(double dt = 0.1, int type = 0);
+   trajectory(const double &dt = 0.1, int type = 0);
+
    // virtual void initPrimitives(Eigen::Vector3d pos, Eigen::Vector3d axis, double omega) = 0;
-   virtual void generatePrimitives(Eigen::Vector3d pos) = 0;
-   virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel) = 0;
-   virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d jerk) = 0;
-   virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d acc,
-                                   Eigen::Vector3d jerk) = 0;
-   virtual Eigen::Vector3d getPosition(double time) = 0;
-   virtual Eigen::Vector3d getVelocity(double time) = 0;
-   virtual Eigen::Vector3d getAcceleration(double time) = 0;
+  //  virtual void generatePrimitives(Eigen::Vector3d pos) = 0;
+  //  virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel) = 0;
+  //  virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d jerk) = 0;
+  //  virtual void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d acc,
+  //                                  Eigen::Vector3d jerk) = 0;
+   virtual Eigen::Vector3d getPosition(const double &time) = 0;
+   virtual Eigen::Vector3d getVelocity(const double &time) = 0;
+   virtual Eigen::Vector3d getAcceleration(const double &time) = 0;
+
    virtual double timeStep() { return dt_; };
    virtual double travellingTime() { return travelling_time_; };
+
  
    virtual void setTimeStep(const double &dt) {dt_=dt;};
    virtual void setDuration(const double &travelling_time) {travelling_time_=travelling_time;};  
+
  
    void setInitialPosition(const Eigen::Vector3d &intial_post) { intial_post_ = intial_post; };
+
    Eigen::Vector3d initialPosition() const { return intial_post_; };
    
-   // virtual nav_msgs::Path getSegment() = 0;
-   // virtual geometry_msgs::PoseStamped vector3d2PoseStampedMsg(Eigen::Vector3d position, Eigen::Vector4d orientation) = 0;
  };
  
  #endif  // TRAJECTORY_PUBLISHER_TRAJECTORY_H

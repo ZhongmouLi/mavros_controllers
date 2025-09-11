@@ -26,7 +26,7 @@
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
  * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVIStakeoffPoseCallbackED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
@@ -73,15 +73,13 @@
  
     // generator_ = std::make_shared<TrajectoryGenerator>(0.01, 1);
     // generator_->setTrajectoryType("CIRCLE");
-    // generator_->initializeGenerator();
-    // generator_->setInitPosition(Eigen::Vector3d(0, 0, 1));
-    // generator_->setCircleTrajectory(Eigen::Vector3d(0, 0, 1), 1, 1.0);
+    generator_->setTrajectoryType("POLYNOMIAL");
 
-    generator_ = std::make_shared<TrajectoryGenerator>(0.01, 1);
-    generator_->setTrajectoryType("CIRCLE");
     generator_->initializeGenerator();
-    generator_->setHomePosition(initial_post_);
-    generator_->setCircleTrajectory(axis_, radius_, omega_);
+
+    // generator_->setHomePosition(initial_post_);
+    // generator_->setCircleTrajectory(axis_, radius_, omega_);
+   
 
      // Publishers
      reference_pub_ = nh_.advertise<geometry_msgs::TwistStamped>("reference/setpoint", 1);
@@ -89,7 +87,10 @@
  
      // Service
      start_service_ = nh_.advertiseService("trajectory_generator/start", &TrajectoryGeneratorROS::startCallback, this);
- 
+
+    //  // Subscribers
+     takeoff_pose_sub_ = nh_.subscribe("reference/takeoff_pose", 1, &TrajectoryGeneratorROS::takeoffPoseCallback, this, ros::TransportHints().tcpNoDelay());
+
      // Timers
      loop_timer_ = nh_.createTimer(ros::Duration(0.1), &TrajectoryGeneratorROS::loopCallback, this);
      ref_timer_ = nh_.createTimer(ros::Duration(0.01), &TrajectoryGeneratorROS::refCallback, this);
@@ -126,19 +127,46 @@
     a_targ_ = generator_->targetAcceleration();
 
  }
- 
- void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
+
+ void TrajectoryGeneratorROS::takeoffPoseCallback(const geometry_msgs::PoseStamped& msg)
+{
+    // Update the takeoff position based on the received message
+    initial_post_ = toEigen(msg.pose.position);
+
+    if (!generator_->isHomeSet())
+    {
+        generator_->setHomePosition(initial_post_);
+        target_post_ = target_post_ + initial_post_;
+
+        generator_->setPolyTrajectory(target_post_, travelling_time_);
+    }
+
+    ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is set to: " << initial_post_.transpose());
+    
+}
+
+void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
      if (!is_active_) return;
      // Add any trajectory visualization here if needed
  }
  
  void TrajectoryGeneratorROS::refCallback(const ros::TimerEvent&) {
-     if (!is_active_)
-     { 
+
+    // check initial position and active state
+    // If the initial position is not set or the trajectory is not active, do not publish
+    if (!generator_->isHomeSet())
+    {
+        ROS_INFO_THROTTLE(1.0, "Initial position of trajectory is not set, waiting for /start service call...");
+
+        return;
+    }
+    else if (!is_active_)
+     {
         ROS_INFO_THROTTLE(1.0, "Trajectory is not active, waiting for /start service call...");
 
         return;
       }
+        // This callback runs at 100Hz, so we can compute the trajectory at this rate
         // Get the elapsed time since the trajectory started
      
       // compute the reference state
@@ -155,24 +183,9 @@
      twist_msg.twist.linear.z = v_targ_(2);
      reference_pub_.publish(twist_msg);
  
-    //  mavros_msgs::PositionTarget raw_msg;
-    //  raw_msg.header.stamp = ros::Time::now();
-    //  raw_msg.header.frame_id = "map";
-    //  raw_msg.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
-    //  raw_msg.type_mask = 0;
-    //  raw_msg.position.x = p_targ_(0);
-    //  raw_msg.position.y = p_targ_(1);
-    //  raw_msg.position.z = p_targ_(2);
-    //  raw_msg.velocity.x = v_targ_(0);
-    //  raw_msg.velocity.y = v_targ_(1);
-    //  raw_msg.velocity.z = v_targ_(2);
-    //  raw_msg.acceleration_or_force.x = a_targ_(0);
-    //  raw_msg.acceleration_or_force.y = a_targ_(1);
-    //  raw_msg.acceleration_or_force.z = a_targ_(2);
-    //  raw_reference_pub_.publish(raw_msg);
 
-     ROS_DEBUG_STREAM("Publishing reference position at" << p_targ_.transpose());
-     ROS_DEBUG_STREAM("Publishing reference vel at" << v_targ_.transpose() );
+     ROS_INFO_STREAM_THROTTLE(2, "Publishing reference position at" << p_targ_.transpose());
+     ROS_INFO_STREAM_THROTTLE(2, "Publishing reference vel at" << v_targ_.transpose() );
     //  ROS_DEBUG_STREAM("Publishing reference acc at" << a_targ_.transpose() );
  }
  

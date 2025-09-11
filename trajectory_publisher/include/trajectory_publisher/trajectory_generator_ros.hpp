@@ -21,7 +21,7 @@
 #include <std_srvs/SetBool.h>
 #include "controller_msgs/FlatTarget.h"
 #include "trajectory_publisher/trajectory_generator.hpp"
-
+#include "trajectory_publisher/base/common_ros.h"
 
 
 class TrajectoryGeneratorROS {
@@ -36,6 +36,9 @@ private:
 
     // ROS service server
     ros::ServiceServer start_service_;    // Service to start/stop trajectory generation
+
+    // ROS subscribers
+    ros::Subscriber takeoff_pose_sub_;    // Subscribes to takeoff pose (geometry_msgs::PoseStamped)
 
     // ROS timers
     ros::Timer loop_timer_;   // Timer for slower loop (e.g., visualization, updates)
@@ -55,11 +58,19 @@ private:
     double radius_;           // Radius of the circle
     double omega_;            // Angular speed (rad/s)
 
+    // Polynomial trajectory configuration
+    Eigen::Vector3d target_post_{0,0,1}; // Target position for polynomial trajectory
+    
+    double travelling_time_{1.0};        // Duration of the polynomial trajectory
+
     // Timing
     ros::Time start_time_;    // Time when the trajectory was started
 
     // Control flag
-    bool is_active_;          // Whether the system is currently active (publishing) or paused
+    bool is_active_ = false;        // Whether the system is currently active (publishing) or paused
+
+    // initial position for trajectory flag
+    bool is_initial_position_set_ = false;  // Flag to check if initial position is set
 
 public:
     // Constructor: initializes publishers, services, timers, and generator
@@ -68,6 +79,10 @@ public:
     // Service callback: handles /start service requests to start or stop publishing
     bool startCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
 
+
+    // Callback for takeoff pose: sets the initial position for the trajectory generator
+    void takeoffPoseCallback(const geometry_msgs::PoseStamped& msg);
+    
     // Updates the current position, velocity, and acceleration based on elapsed time
     void updateReference();
 

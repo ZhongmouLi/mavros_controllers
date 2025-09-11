@@ -31,22 +31,36 @@
  *
  ****************************************************************************/
 /**
- * @brief Trajectory Base Class
+ * @brief Common library
+ *
+ * Common library for geometric controller
  *
  * @author Jaeyoung Lim <jalim@ethz.ch>
  */
 
- #include "trajectory_publisher/base/trajectory.h"
+ #ifndef COMMON_ROS_H
+ #define COMMON_ROS_H
+ 
+ #include <geometry_msgs/PoseStamped.h>
+ #include <geometry_msgs/Twist.h>
+ #include <geometry_msgs/TwistStamped.h>
+ #include <Eigen/Dense>
+ 
+inline Eigen::Vector3d toEigen(const geometry_msgs::Point &p) {
+    Eigen::Vector3d ev3(p.x, p.y, p.z);
+    return ev3;
+}
+  
+inline Eigen::Vector3d toEigen(const geometry_msgs::Vector3 &v3) {
+    Eigen::Vector3d ev3(v3.x, v3.y, v3.z);
+    return ev3;
+}
 
- // trajectory::trajectory(){
+inline Eigen::Vector4d toEigen(const geometry_msgs::Quaternion &q) {
+  // Note: In Eigen, quaternion format is (w,x,y,z)
+  return Eigen::Vector4d(q.w, q.x, q.y, q.z);
+}
+
+
+ #endif
  
- // };
- 
- trajectory::~trajectory(){
- 
- };
- 
- trajectory::trajectory(const double &dt, int type):dt_(dt), type_(type)
- {
- 
- };

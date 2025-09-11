@@ -79,7 +79,7 @@ void shapetrajectory::generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d ve
 void shapetrajectory::generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d acc,
                                          Eigen::Vector3d jerk) {}
 
-Eigen::Vector3d shapetrajectory::getPosition(double time) {
+Eigen::Vector3d shapetrajectory::getPosition(const double &time) {
   Eigen::Vector3d position;
   double theta;
   double pi = std::acos(-1.0);
@@ -110,14 +110,14 @@ Eigen::Vector3d shapetrajectory::getPosition(double time) {
   return position;
 }
 
-Eigen::Vector3d shapetrajectory::getVelocity(double time) {
+Eigen::Vector3d shapetrajectory::getVelocity(const double &time) {
   Eigen::Vector3d velocity;
   double theta;
 
   switch (type_) {
     case TRAJ_CIRCLE:
 
-      velocity = omega_ * normal_axis_.cross(getPosition(time));
+      velocity = omega_ * normal_axis_.cross(getPosition(time)-initialPosition());
       break;
     case TRAJ_STATIONARY:
 
@@ -140,7 +140,7 @@ Eigen::Vector3d shapetrajectory::getVelocity(double time) {
   return velocity;
 }
 
-Eigen::Vector3d shapetrajectory::getAcceleration(double time) {
+Eigen::Vector3d shapetrajectory::getAcceleration(const double &time) {
   Eigen::Vector3d acceleration;
 
   switch (type_) {

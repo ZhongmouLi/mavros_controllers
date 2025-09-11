@@ -20,6 +20,7 @@
             <param name="use_gps" value="false" />
             <!-- set vicon -->
             <param name="use_vicon" value="true" />
+            <param name="vicon_topic" value="/vicon/drone" />
             <!-- set control mode -->
             <param name="ctrl_mode" value="$(arg command_input)" />
             <param name="mission_time" value ="20" />
@@ -36,24 +37,17 @@
             <param name="Kv_z" value="10.0"/>             
     </node>
 
-  <arg name="drone_home_x" default="0"/>
-  <arg name="drone_home_y" default="0"/>
-  <arg name="drone_home_z" default="1"/>
-  <arg name="drone_takeoff_height" default="1"/>
-  <arg name="take_off_time" default="4"/>
 
   <node pkg="trajectory_generator" type="trajectory_generator_node" name="trajectory_generator_node" output="screen">
             <!-- write param for them -->
-              <param name="circle_axis_x" value="0" />
+              <!-- <param name="circle_axis_x" value="0" />
               <param name="circle_axis_y" value="0" />
               <param name="circle_axis_z" value="1" />
-              <param name="circle_omega" value="1.0" />
-              <param name="radius" value="1.0" />
-              <param name="intial_post_x" value="0.0" />
-              <param name="intial_post_y" value="0.0" />
-              <param name="intial_post_z" value="1.0" />
-  </node>   
-
-
-
+              <param name="circle_omega" value="1" />
+              <param name="radius" value="2" /> -->
+              <param name="travelling_time" value="5.0" />
+              <param name="target_post_x" value="0.0" />
+              <param name="target_post_y" value="0.0" />
+              <param name="target_post_z" value="1.0" />
+   </node>   
   </launch>
