@@ -42,44 +42,14 @@
      : nh_(nh), nh_private_(nh_private), is_active_(false) {
  
      // Load parameters
-    //  nh_private_.param("circle_origin_x", origin_.x(), 0.0);
-    //  nh_private_.param("circle_origin_y", origin_.y(), 0.0);
-    //  nh_private_.param("circle_origin_z", origin_.z(), 1.0);
-     nh_private_.param("circle_axis_x", axis_[0], 0.0);
-     nh_private_.param("circle_axis_y", axis_[1], 0.0);
-     nh_private_.param("circle_axis_z", axis_[2], 1.0);
-     nh_private_.param("circle_omega", omega_, 1.0);
-     nh_private_.param("radius", radius_, 1.0);
-     nh_private_.param("intial_post_x", initial_post_[0], 0.0);
-     nh_private_.param("intial_post_y", initial_post_[1], 0.0);
-     nh_private_.param("intial_post_z", initial_post_[2], 1.0);
+
      
     // load trajectory definition from yaml file    
     std::string pkg_path = ros::package::getPath("trajectory_generator");
     std::string yaml_path_default = pkg_path + "/config/example.yaml";
 
     nh.param<std::string>("config_file", yaml_path_, yaml_path_default);
-
-     // Initialize generator
-    //  generator_ = std::make_shared<TrajectoryGenerator>(0.01,1);
-
-    //  generator_->setTrajectoryType("CIRCLE");
-     
-    //  generator_->initializeGenerator() ;
-     
-    //  generator_->setHomePosition(initial_post_);
-     
-    //  generator_->setCircleTrajectory(axis_, radius_, omega_);
- 
-    // generator_ = std::make_shared<TrajectoryGenerator>(0.01, 1);
-    // generator_->setTrajectoryType("CIRCLE");
-    // generator_->setTrajectoryType("POLYNOMIAL");
-
-    // generator_->initializeGenerator();
-
-    // generator_->setHomePosition(initial_post_);
-    // generator_->setCircleTrajectory(axis_, radius_, omega_);
-   
+    ROS_INFO("Loading trajectory configuration from: %s", yaml_path_.c_str());
 
      // Publishers
      reference_pub_ = nh_.advertise<geometry_msgs::TwistStamped>("reference/setpoint", 1);
@@ -96,6 +66,13 @@
      ref_timer_ = nh_.createTimer(ros::Duration(0.01), &TrajectoryGeneratorROS::refCallback, this);
  
      ROS_INFO("TrajectoryGeneratorROS initialized, waiting for /start service call...");
+
+     // create trajectory generator
+     ptr_traj_generator_ = std::make_shared<TrajectoryGenerator>(0.01);
+
+
+    // Initialize generator from yaml
+    inputTrajectoryConfig();
  }
 
 
@@ -120,31 +97,34 @@
 
       // Get the elapsed time since the trajectory started
      double elapsed = (ros::Time::now() - start_time_).toSec();
+
+     if (!ptr_traj_generator_) { ROS_ERROR_THROTTLE(1.0, "generator not initialized"); return; }
+
+     ptr_traj_generator_->chooseAndConfigureByTime(elapsed);
+
      // compute the trajectory at the elapsed time
-     generator_->computeTrajectoryAtTime(elapsed);
+     ptr_traj_generator_->computeTrajectoryAtTime(elapsed);
 
     // Get the target position, velocity, and acceleration
-    p_targ_ = generator_->targetPosition();
-    v_targ_ = generator_->targetVelocity();
-    a_targ_ = generator_->targetAcceleration();
+    p_targ_ = ptr_traj_generator_->targetPosition();
+    v_targ_ = ptr_traj_generator_->targetVelocity();
+    a_targ_ = ptr_traj_generator_->targetAcceleration();
 
  }
 
  void TrajectoryGeneratorROS::takeoffPoseCallback(const geometry_msgs::PoseStamped& msg)
 {
+    // ROS_INFO("fuck takeoffPoseCallback 1");
     // Update the takeoff position based on the received message
     initial_post_ = toEigen(msg.pose.position);
 
-    if (!generator_->isHomeSet())
+    if (!ptr_traj_generator_->isInitPositionSet())
     {
-        generator_->setHomePosition(initial_post_);
-        target_post_ = target_post_ + initial_post_;
-
-        generator_->setPolyTrajectory(target_post_, travelling_time_);
+        ptr_traj_generator_->setInitPosition(initial_post_);
     }
 
     ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is set to: " << initial_post_.transpose());
-    
+    //  ROS_INFO("fuck takeoffPoseCallback 2");
 }
 
 void TrajectoryGeneratorROS::inputTrajectoryConfig()
@@ -169,7 +149,17 @@ void TrajectoryGeneratorROS::inputTrajectoryConfig()
             poly.end_position   = seg["end"]["position"].as<std::array<double,3>>();
             poly.end_yaw        = seg["end"]["yaw"].as<double>();
 
-            generator_->inputTrajectoryStrcutData(poly);
+            // Print with ROS_INFO (printf-style)
+            ROS_INFO(
+            "Loaded POLYNOMIAL segment: id=%s dur=%.3f "
+            "start=[%.3f, %.3f, %.3f] start_yaw=%.3f "
+            "end=[%.3f, %.3f, %.3f] end_yaw=%.3f",
+            poly.id.c_str(), poly.duration,
+            poly.start_position[0], poly.start_position[1], poly.start_position[2], poly.start_yaw,
+            poly.end_position[0],   poly.end_position[1],   poly.end_position[2],   poly.end_yaw
+            );
+
+            ptr_traj_generator_->inputTrajectoryStrcutData(poly);
         }
         else if (type == "CIRCLE") {
             CircleTrajStrct circle;
@@ -186,7 +176,7 @@ void TrajectoryGeneratorROS::inputTrajectoryConfig()
                 circle.initial_pos = seg["intial_post_x"].as<std::array<double,3>>(); // fallback typo
             }
 
-            generator_->inputTrajectoryStrcutData(circle);
+            ptr_traj_generator_->inputTrajectoryStrcutData(circle);
         }
     }
 }
@@ -201,7 +191,7 @@ void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
 
     // check initial position and active state
     // If the initial position is not set or the trajectory is not active, do not publish
-    if (!generator_->isHomeSet())
+    if (!ptr_traj_generator_->isInitPositionSet())
     {
         ROS_INFO_THROTTLE(1.0, "Initial position of trajectory is not set, waiting for /start service call...");
 

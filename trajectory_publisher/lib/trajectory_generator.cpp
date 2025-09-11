@@ -1,10 +1,11 @@
 #include "trajectory_publisher/trajectory_generator.hpp"
+#include <codecvt>
    
 TrajectoryGenerator:: TrajectoryGenerator(const double &dt, const int &type):
 dt_(dt)
 {
     // Initialize the generator with default values
-    generator_ = nullptr;
+    ptr_trajectory_ = nullptr;
 }
 
 
@@ -12,14 +13,14 @@ TrajectoryGenerator:: TrajectoryGenerator(const double &dt):
 dt_(dt)
 {
     // Initialize the generator with default values
-    generator_ = nullptr;
+    ptr_trajectory_ = nullptr;
 }
 
 
 // Destructor
 TrajectoryGenerator::~TrajectoryGenerator() 
 {
-    generator_.reset();
+    ptr_trajectory_.reset();
 }
 
 
@@ -45,7 +46,7 @@ TrajectoryGenerator::~TrajectoryGenerator()
 void TrajectoryGenerator::setHomePosition(const Eigen::Vector3d &home_position) 
 {
             homoe_position_ = home_position;
-            // generator_->setInitialPosition(init_post_);
+            // ptr_trajectory_->setInitialPosition(init_post_);
             isHomeSet_ = true;
 }
 
@@ -55,8 +56,10 @@ void TrajectoryGenerator::setHomePosition(const Eigen::Vector3d &home_position)
 void TrajectoryGenerator::setInitPosition(const Eigen::Vector3d &Init_position) 
 {
             init_position_ = Init_position;
-            generator_->setInitialPosition(init_position_);
-            // isH_ = true;
+            // std::cout<<"fuck setInitPosition 1"<<std::endl;
+            // ptr_trajectory_->setInitialPosition(init_position_);
+            isInitPositionSet_ = true;
+            // std::cout<<"fuck setInitPosition 2"<<std::endl;
 }
 
 
@@ -100,19 +103,19 @@ void TrajectoryGenerator::setTrajectoryType(const TrajectoryType &trajectory_typ
 {
     switch (trajectory_type) {
         case TrajectoryType::POLYNOMIAL:
-            generator_ = std::make_shared<polynomialtrajectory>(dt_);
+            ptr_trajectory_ = std::make_shared<polynomialtrajectory>(dt_);
             break;
 
         case TrajectoryType::CIRCLE:
-            generator_ = std::make_shared<shapetrajectory>(dt_,1);
+            ptr_trajectory_ = std::make_shared<shapetrajectory>(dt_,1);
             break;
 
         case TrajectoryType::LAMNISCATE:
-            generator_ = std::make_shared<shapetrajectory>(dt_,2);
+            ptr_trajectory_ = std::make_shared<shapetrajectory>(dt_,2);
             break;
 
         case TrajectoryType::STATIONARY:
-            generator_ = std::make_shared<shapetrajectory>(dt_,3);
+            ptr_trajectory_ = std::make_shared<shapetrajectory>(dt_,3);
             break;
 
         default:
@@ -190,20 +193,20 @@ void TrajectoryGenerator::chooseAndConfigureByTime(const double &t)
 
 void TrajectoryGenerator::setCircleTrajectory(const Eigen::Vector3d &initial_position, const Eigen::Vector3d &normal_axis, const double &radius, const double &omega) 
 {
-    auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(generator_);
+    auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(ptr_trajectory_);
     if (shape_ptr) {
         shape_ptr->initPrimitives(initial_position, normal_axis, radius, omega);
     } else {
         throw std::runtime_error("Generator is not a shapetrajectory; cannot call initPrimitives");
     }
 
-// generator_->initPrimitives(normal_axis, radius, omega);
+// ptr_trajectory_->initPrimitives(normal_axis, radius, omega);
 };    
 
 
 void TrajectoryGenerator::setPolyTrajectory(const Eigen::Vector3d &target_post, const double &travelling_time) 
 {
-    auto shape_ptr = std::dynamic_pointer_cast<polynomialtrajectory>(generator_);
+    auto shape_ptr = std::dynamic_pointer_cast<polynomialtrajectory>(ptr_trajectory_);
     if (shape_ptr) {
         shape_ptr->initPrimitives(target_post, travelling_time);
     } else {
@@ -213,7 +216,7 @@ void TrajectoryGenerator::setPolyTrajectory(const Eigen::Vector3d &target_post, 
 
 void TrajectoryGenerator::setPolyTrajectory(const Eigen::Vector3d &start_post, const Eigen::Vector3d &target_post, const double &travelling_time) 
 {
-    auto shape_ptr = std::dynamic_pointer_cast<polynomialtrajectory>(generator_);
+    auto shape_ptr = std::dynamic_pointer_cast<polynomialtrajectory>(ptr_trajectory_);
     if (shape_ptr) {
         shape_ptr->initPrimitives(start_post,target_post, travelling_time);
     } else {
@@ -224,9 +227,9 @@ void TrajectoryGenerator::setPolyTrajectory(const Eigen::Vector3d &start_post, c
 void TrajectoryGenerator::computeTrajectoryAtTime(const double &t) 
 {
     // Compute the trajectory at time t
-    target_position_ = generator_->getPosition(t);
-    target_velocity_ = generator_->getVelocity(t);
-    target_acceleration_ = generator_->getAcceleration(t);
+    target_position_ = ptr_trajectory_->getPosition(t);
+    target_velocity_ = ptr_trajectory_->getVelocity(t);
+    target_acceleration_ = ptr_trajectory_->getAcceleration(t);
 }
 
 

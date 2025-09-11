@@ -50,7 +50,7 @@ private:
     std::string yaml_path_;
 
     // Trajectory generator
-    std::shared_ptr<TrajectoryGenerator> generator_;  // Smart pointer holding the trajectory generator
+    std::shared_ptr<TrajectoryGenerator> ptr_traj_generator_;  // Smart pointer holding the trajectory generator
 
     // Current target state (calculated at each time step)
     Eigen::Vector3d p_targ_;  // Target position [x, y, z]

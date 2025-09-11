@@ -48,7 +48,7 @@ class TrajectoryGenerator {
 
         std::shared_ptr<TrajectoryStrct> active_traj_config_ = nullptr;
 
-        std::shared_ptr<trajectory> generator_ = nullptr;
+        std::shared_ptr<trajectory> ptr_trajectory_ = nullptr;
 
         Eigen::Vector3d target_position_{0,0,0}; // Target position
         Eigen::Vector3d target_velocity_{0,0,0}; // Target velocity
@@ -58,6 +58,7 @@ class TrajectoryGenerator {
         bool isHomeSet_ = false;
 
         Eigen::Vector3d init_position_{0,0,0}; // Initial position
+        bool isInitPositionSet_ = false;
 
         double dt_{0.01}; // Time step
 
@@ -90,20 +91,9 @@ class TrajectoryGenerator {
             return init_position_;
         }
 
-        double circleRadius() const {
-            auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(generator_);
-            return shape_ptr->circleRadius();
-        }
 
-
-        Eigen::Vector3d circleAxis() const {
-            auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(generator_);
-            return shape_ptr->circleAxis();
-        }
-
-        double circleOmega() const {
-            auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(generator_);
-            return shape_ptr->circleOmega();
+        bool isInitPositionSet() const {
+            return isInitPositionSet_;
         }
 
 
@@ -114,6 +104,26 @@ class TrajectoryGenerator {
         bool isHomeSet() const {
             return isHomeSet_;
         }
+
+
+
+        // double circleRadius() const {
+        //     auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(ptr_trajectory_);
+        //     return shape_ptr->circleRadius();
+        // }
+
+
+        // Eigen::Vector3d circleAxis() const {
+        //     auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(ptr_trajectory_);
+        //     return shape_ptr->circleAxis();
+        // }
+
+        // double circleOmega() const {
+        //     auto shape_ptr = std::dynamic_pointer_cast<shapetrajectory>(ptr_trajectory_);
+        //     return shape_ptr->circleOmega();
+        // }
+
+
 
         // Set the trajectory type
         void setTrajectoryType(const std::string& trajectory_type);
