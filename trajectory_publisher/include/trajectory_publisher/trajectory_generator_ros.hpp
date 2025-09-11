@@ -99,4 +99,7 @@ public:
 
     // Fast loop timer callback: publishes reference states (position, velocity, acceleration)
     void refCallback(const ros::TimerEvent&);
+
+
+    void rosLogTrajectory();
 };

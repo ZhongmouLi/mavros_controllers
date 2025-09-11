@@ -10,6 +10,7 @@
 #include <sstream>
 #include <iomanip> 
 
+
 enum class TrajectoryType {
     POLYNOMIAL,
     CIRCLE,
@@ -83,11 +84,15 @@ class TrajectoryGenerator {
 
         std::shared_ptr<trajectory> ptr_trajectory_ = nullptr;
 
+        TrajectoryType current_trajectory_type_{TrajectoryType::STATIONARY};
+
         Eigen::Vector3d target_position_{0,0,0}; // Target position
         Eigen::Vector3d target_velocity_{0,0,0}; // Target velocity
         Eigen::Vector3d target_acceleration_{0,0,0}; // Target acceleration
 
-        Eigen::Vector3d homoe_position_{0,0,0}; // Home position
+        Eigen::Vector3d last_target_position_{0,0,0}; // Last target position
+
+        Eigen::Vector3d home_position_{0,0,0}; // Home position
         bool isHomeSet_ = false;
 
         Eigen::Vector3d init_position_{0,0,0}; // Initial position
@@ -96,6 +101,10 @@ class TrajectoryGenerator {
 
         double dt_{0.01}; // Time step
 
+
+        double total_trajectory_time_{0.0}; // Total trajectory time
+
+        bool is_trajectry_ended_ = false;
 
         bool is_trajectory_offset_set_ = false;
 
@@ -129,6 +138,9 @@ class TrajectoryGenerator {
 
 
         void setOffsetForAllSegments(const Eigen::Vector3d& off);
+        
+
+        void computeTotalTrajectoryTime();
 
         void setTrajectoryType(const TrajectoryType &trajectory_type) ;
 
@@ -165,12 +177,14 @@ class TrajectoryGenerator {
         bool isInitPositionSet() const {return isInitPositionSet_;}
 
 
-        Eigen::Vector3d homePosition() const {return homoe_position_;}
+        Eigen::Vector3d homePosition() const {return home_position_;}
 
         bool isHomeSet() const {return isHomeSet_;};
 
         bool isTrajectoryOffsetSet() const {return is_trajectory_offset_set_;};
 
         bool isTrajectoryConfigured() const {return is_trajectory_configured_;};
+
+        double totalTime() const {return total_trajectory_time_;};
 
 };

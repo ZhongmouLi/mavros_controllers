@@ -5,7 +5,7 @@ trajectory:
     - id: seg_01
       isRelative: true
       type: "POLYNOMIAL"
-      duration: 10
+      duration: 4
       start:
         position: [0.0, 0.0, 0.0]
         yaw: 0.0

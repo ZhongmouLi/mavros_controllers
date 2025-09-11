@@ -46,7 +46,7 @@ TrajectoryGenerator::~TrajectoryGenerator()
 
 void TrajectoryGenerator::setHomePosition(const Eigen::Vector3d &home_position) 
 {
-            homoe_position_ = home_position;
+            home_position_ = home_position;
             // ptr_trajectory_->setInitialPosition(init_post_);
             isHomeSet_ = true;
 }
@@ -126,11 +126,22 @@ void TrajectoryGenerator::setTrajectoryType(const TrajectoryType &trajectory_typ
         default:
             throw std::runtime_error("Unknown trajectory type enum value");
     }
+
+    
 }
 
 
 void TrajectoryGenerator::chooseAndConfigureByTime(const double &t)
 {
+
+    // use pre-defined trajectory type if time is within totl time
+    if (t>=totalTime())
+    {
+        current_trajectory_type_ = TrajectoryType::STATIONARY;
+        is_trajectry_ended_ = true;
+        return;
+    };
+
     // 1) Find active segment by accumulated duration
     double acc_time = 0.0;
 
@@ -141,16 +152,19 @@ void TrajectoryGenerator::chooseAndConfigureByTime(const double &t)
         if (t <= acc_time) { active_traj_config_ = seg; break; }
     }
 
+    current_trajectory_type_ = active_traj_config_->type;
+
     if (!active_traj_config_) {                     // t past total duration
         setTrajectoryType(TrajectoryType::STATIONARY); // default
         return;
     }
 
+    
     // 2) Set trajectory type
-    setTrajectoryType(active_traj_config_->type);
+    setTrajectoryType(current_trajectory_type_);
 
     // 3) Configure generator with segment-specific details
-    switch (active_traj_config_->type) {
+    switch (current_trajectory_type_) {
         case TrajectoryType::POLYNOMIAL: {
             auto p = std::static_pointer_cast<PolynomialTrajStrct>(active_traj_config_);
 
@@ -167,6 +181,8 @@ void TrajectoryGenerator::chooseAndConfigureByTime(const double &t)
                 end_pos,
                 p->duration
             );
+
+           
             break;
         }
 
@@ -186,15 +202,21 @@ void TrajectoryGenerator::chooseAndConfigureByTime(const double &t)
             double angular_velocity = c->circle_omega;
 
             setCircleTrajectory(initPosition(), axis, radius, angular_velocity);
+
+   
             break;
         }
 
         case TrajectoryType::LAMNISCATE:
             // No extra parameters in your API for these cases
+
+
             break;
 
         case TrajectoryType::STATIONARY:
             // No extra parameters in your API for these cases
+
+ 
             break;
 
         default:
@@ -203,6 +225,8 @@ void TrajectoryGenerator::chooseAndConfigureByTime(const double &t)
     }
 
     is_trajectory_configured_ = true;
+
+    
 }
 
 
@@ -241,11 +265,21 @@ void TrajectoryGenerator::setPolyTrajectory(const Eigen::Vector3d &start_post, c
 
 void TrajectoryGenerator::computeTrajectoryAtTime(const double &t) 
 {
-    if (isTrajectoryOffsetSet() && isTrajectoryConfigured()) {
+    if (isTrajectoryOffsetSet() && isTrajectoryConfigured() && current_trajectory_type_ != TrajectoryType::STATIONARY) 
+    {
         // Compute the trajectory at time t
         target_position_ = ptr_trajectory_->getPosition(t);
         target_velocity_ = ptr_trajectory_->getVelocity(t);
         target_acceleration_ = ptr_trajectory_->getAcceleration(t);
+
+        last_target_position_ = target_position_;
+    }
+    else if (isTrajectoryOffsetSet() && isTrajectoryConfigured() && current_trajectory_type_ == TrajectoryType::STATIONARY)
+    {
+        // Hold last position if stationary
+        target_position_ = last_target_position_;
+        target_velocity_ = Eigen::Vector3d::Zero();
+        target_acceleration_ = Eigen::Vector3d::Zero();
     }
     else {
         throw std::runtime_error("Trajectory offset or configuration not set before computing trajectory.");
@@ -253,7 +287,12 @@ void TrajectoryGenerator::computeTrajectoryAtTime(const double &t)
 }
 
 
-
+void TrajectoryGenerator::computeTotalTrajectoryTime()
+{
+    for (const auto& seg : v_trajectory_strct_) {
+        total_trajectory_time_ += seg->duration;
+    }
+}
 
 void TrajectoryGenerator::setOffsetForAllSegments(const Eigen::Vector3d& off)
 {
@@ -349,8 +388,13 @@ std::string TrajectoryGenerator::TotalTrajectoryInfor() const
             default:
                 break;
         }
+
+        
+
         oss << "\n";
     }
+
+    oss << "whole_trajectory_time=" << totalTime();
 
     return oss.str();
 }
@@ -361,51 +405,63 @@ std::string TrajectoryGenerator::currentSegTrajInfor() const
 {
     if (!active_traj_config_) return "No active trajectory segment";
 
+    std::string info;
+
     auto vec3str = [](const Eigen::Vector3d& v) {
-        return std::string("[") + std::to_string(v.x()) + ", "
-                                + std::to_string(v.y()) + ", "
-                                + std::to_string(v.z()) + "]";
-    };
+                return std::string("[") + std::to_string(v.x()) + ", "
+                                        + std::to_string(v.y()) + ", "
+                                        + std::to_string(v.z()) + "]";
+            };
+            
+    if(!is_trajectry_ended_)
+    {
+       
 
-    std::string info = "id=" + active_traj_config_->id + ", type=";
-    switch (active_traj_config_->type) {
-        case TrajectoryType::POLYNOMIAL: info += "POLYNOMIAL"; break;
-        case TrajectoryType::CIRCLE:     info += "CIRCLE";     break;
-        case TrajectoryType::LAMNISCATE: info += "LAMNISCATE"; break;
-        case TrajectoryType::STATIONARY: info += "STATIONARY"; break;
-        default:                         info += "UNKNOWN";    break;
+        info = "id=" + active_traj_config_->id + ", type=";
+        switch (active_traj_config_->type) {
+            case TrajectoryType::POLYNOMIAL: info += "POLYNOMIAL"; break;
+            case TrajectoryType::CIRCLE:     info += "CIRCLE";     break;
+            case TrajectoryType::LAMNISCATE: info += "LAMNISCATE"; break;
+            case TrajectoryType::STATIONARY: info += "STATIONARY"; break;
+            default:                         info += "UNKNOWN";    break;
+        }
+
+        // Base fields
+        info += ", duration="   + std::to_string(active_traj_config_->duration);
+        info += ", isRelative=" + std::string(active_traj_config_->isRelative ? "true" : "false");
+        info += ", offset="     + vec3str(active_traj_config_->off_set);
+
+        // Derived fields
+        switch (active_traj_config_->type) {
+            case TrajectoryType::POLYNOMIAL: {
+                auto p = std::static_pointer_cast<PolynomialTrajStrct>(active_traj_config_);
+                const Eigen::Vector3d start_abs = p->isRelative ? (p->off_set + p->start_position) : p->start_position;
+                const Eigen::Vector3d end_abs   = p->isRelative ? (p->off_set + p->end_position)   : p->end_position;
+
+                info += ", start="      + vec3str(p->start_position);
+                info += ", start_yaw="  + std::to_string(p->start_yaw);
+                info += ", end="        + vec3str(p->end_position);
+                info += ", end_yaw="    + std::to_string(p->end_yaw);
+                info += ", start(abs)=" + vec3str(start_abs);
+                info += ", end(abs)="   + vec3str(end_abs);
+                break;
+            }
+            case TrajectoryType::CIRCLE: {
+                auto c = std::static_pointer_cast<CircleTrajStrct>(active_traj_config_);
+                info += ", axis="   + vec3str(c->circle_axis);
+                info += ", omega="  + std::to_string(c->circle_omega);
+                info += ", radius=" + std::to_string(c->radius);
+                break;
+            }
+            default:
+                break;
+        }
     }
-
-    // Base fields
-    info += ", duration="   + std::to_string(active_traj_config_->duration);
-    info += ", isRelative=" + std::string(active_traj_config_->isRelative ? "true" : "false");
-    info += ", offset="     + vec3str(active_traj_config_->off_set);
-
-    // Derived fields
-    switch (active_traj_config_->type) {
-        case TrajectoryType::POLYNOMIAL: {
-            auto p = std::static_pointer_cast<PolynomialTrajStrct>(active_traj_config_);
-            const Eigen::Vector3d start_abs = p->isRelative ? (p->off_set + p->start_position) : p->start_position;
-            const Eigen::Vector3d end_abs   = p->isRelative ? (p->off_set + p->end_position)   : p->end_position;
-
-            info += ", start="      + vec3str(p->start_position);
-            info += ", start_yaw="  + std::to_string(p->start_yaw);
-            info += ", end="        + vec3str(p->end_position);
-            info += ", end_yaw="    + std::to_string(p->end_yaw);
-            info += ", start(abs)=" + vec3str(start_abs);
-            info += ", end(abs)="   + vec3str(end_abs);
-            break;
-        }
-        case TrajectoryType::CIRCLE: {
-            auto c = std::static_pointer_cast<CircleTrajStrct>(active_traj_config_);
-            info += ", axis="   + vec3str(c->circle_axis);
-            info += ", omega="  + std::to_string(c->circle_omega);
-            info += ", radius=" + std::to_string(c->radius);
-            break;
-        }
-        default:
-            break;
+    else 
+    {
+        info = "trajectory ENDED, Hovering at " + vec3str(last_target_position_);
     }
 
     return info;
 };
+

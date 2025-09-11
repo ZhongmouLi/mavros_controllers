@@ -96,15 +96,20 @@
  void TrajectoryGeneratorROS::updateReference() {
 
       // Get the elapsed time since the trajectory started
+    //  ROS_INFO("fuckon point 2.1");  
      double elapsed = (ros::Time::now() - start_time_).toSec();
 
      if (!ptr_traj_generator_) { ROS_ERROR_THROTTLE(1.0, "generator not initialized"); return; }
 
+    //  ROS_INFO("fuckon point 2.2");  
      ptr_traj_generator_->chooseAndConfigureByTime(elapsed);
 
+    //  ROS_INFO("fuckon point 2.3");  
      // compute the trajectory at the elapsed time
      ptr_traj_generator_->computeTrajectoryAtTime(elapsed);
 
+
+    // ROS_INFO("fuckon point 2.4");   
     // Get the target position, velocity, and acceleration
     p_targ_ = ptr_traj_generator_->targetPosition();
     v_targ_ = ptr_traj_generator_->targetVelocity();
@@ -196,9 +201,15 @@ void TrajectoryGeneratorROS::inputTrajectoryConfig()
         }
     }
 
+    ptr_traj_generator_->computeTotalTrajectoryTime();
+
     auto trajectory_info = ptr_traj_generator_->TotalTrajectoryInfor();
 
     ROS_INFO_STREAM("Loaded trajectory configuration:\n" << trajectory_info);
+
+    // ptr_traj_generator_->chooseAndConfigureByTime(0.0);  // make first segment active
+    // auto info = ptr_traj_generator_->currentSegTrajInfor();
+    // ROS_INFO_STREAM("Current active trajectory segment info: " << info);
 }
 
 
@@ -226,19 +237,12 @@ void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
         // This callback runs at 100Hz, so we can compute the trajectory at this rate
         // Get the elapsed time since the trajectory started
 
-    Eigen::Vector3d current_start_position = ptr_traj_generator_->currentStartPosition();
-    ROS_INFO_STREAM_THROTTLE(1.0, "Current start position of trajectory is: " << current_start_position.transpose());
-
-    Eigen::Vector3d current_end_position = ptr_traj_generator_->currentEndPosition();
-    ROS_INFO_STREAM_THROTTLE(1.0, "Current end position of trajectory is: " << current_end_position.transpose());
-
-
-    auto info = ptr_traj_generator_->currentSegTrajInfor();
-
-    ROS_INFO_STREAM_THROTTLE(5, "Current active trajectory segment info: " << info);
-
+    // ROS_INFO("fuck point 1");
+    rosLogTrajectory();
       // compute the reference state
-     updateReference();
+    // ROS_INFO("fuck point 2")  ;
+    updateReference();
+    // ROS_INFO("fuck point 3")  ;
  
      geometry_msgs::TwistStamped twist_msg;
      twist_msg.header.stamp = ros::Time::now();
@@ -257,3 +261,10 @@ void TrajectoryGeneratorROS::loopCallback(const ros::TimerEvent&) {
     //  ROS_DEBUG_STREAM("Publishing reference acc at" << a_targ_.transpose() );
  }
  
+
+void TrajectoryGeneratorROS::rosLogTrajectory()
+{
+    auto info = ptr_traj_generator_->currentSegTrajInfor();
+
+    ROS_INFO_STREAM_THROTTLE(2, "Current active trajectory segment info: " << info);
+}    
