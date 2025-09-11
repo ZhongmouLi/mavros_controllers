@@ -1,0 +1,27 @@
+trajectory:
+  frame_id: "map"
+  description: "Sample multi-segment path"
+
+  # (optional) defaults applied if a segment omits the field
+  defaults:
+    type: "minjerk"     # allowed: line, minjerk, polynomial, cubic_spline
+    duration: 2.0       # seconds
+
+  segments:
+    - id: seg_01
+      type: "POLYNOMIAL"
+      duration: 2
+      start:
+        position: [0.0, 0.0, 0.5]
+        yaw: 0.0
+      end:
+        position: [1.0, 0.0, 0.5]
+        yaw: 0.0
+
+    - id: seg_02
+      type: "CIRCLE"
+      duration: 2.5
+      circle_axis: [0.0, 0.0, 1]
+      circle_omega: 0.5
+      intial_post_x: [0.0, 0.0, 1]
+

@@ -54,7 +54,12 @@
      nh_private_.param("intial_post_y", initial_post_[1], 0.0);
      nh_private_.param("intial_post_z", initial_post_[2], 1.0);
      
- 
+    // load trajectory definition from yaml file    
+    std::string pkg_path = ros::package::getPath("trajectory_generator");
+    std::string yaml_path_default = pkg_path + "/config/example.yaml";
+
+    nh.param<std::string>("config_file", yaml_path, yaml_path_default);
+
      // Initialize generator
     //  generator_ = std::make_shared<TrajectoryGenerator>(0.01,1);
 

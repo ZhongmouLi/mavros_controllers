@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.16.3)
 project(trajectory_generator)
 
 add_definitions(-std=c++17)
@@ -16,8 +16,11 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs tf mav_planning_msgs controller_msgs mavros_msgs
+#   CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs tf mav_planning_msgs controller_msgs mavros_msgs
+  CATKIN_DEPENDS roscpp rospy std_msgs nav_msgs geometry_msgs tf controller_msgs mavros_msgs
 )
+
+find_package(yaml-cpp REQUIRED)
 
 include_directories(
   include
@@ -41,7 +44,7 @@ add_library(${PROJECT_NAME}_lib
 )
 target_compile_options(${PROJECT_NAME}_lib PRIVATE -std=c++17 -Wall -Wextra)
 
-target_link_libraries(${PROJECT_NAME}_lib  ${catkin_LIBRARIES} ${PROJECT_NAME}_base)
+target_link_libraries(${PROJECT_NAME}_lib  ${catkin_LIBRARIES} ${PROJECT_NAME}_base yaml-cpp)
 
 add_library(${PROJECT_NAME}_ros
         lib/trajectory_generator_ros.cpp

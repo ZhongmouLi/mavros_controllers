@@ -4,11 +4,10 @@
 #include "trajectory_publisher/base/trajectory.h"
 #include "trajectory_publisher/base/shapetrajectory.h"
 #include "trajectory_publisher/base/polynomialtrajectory.h"
-
+#include <yaml-cpp/yaml.h>
+#include <ros/package.h>
 #include <vector>
 
-
-#include <vector>
 
 class TrajectoryGenerator {
 
