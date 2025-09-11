@@ -23,7 +23,7 @@
             <param name="vicon_topic" value="/vicon/drone" />
             <!-- set control mode -->
             <param name="ctrl_mode" value="$(arg command_input)" />
-            <param name="mission_time" value ="20" />
+            <param name="mission_time" value ="100" />
             <param name="max_acc" value="10.0" />
             <!--Params specific for Iris copter-->
             <param name="attctrl_constant" value="0.3"/>
@@ -45,9 +45,9 @@
               <param name="circle_axis_z" value="1" />
               <param name="circle_omega" value="1" />
               <param name="radius" value="2" /> -->
-              <param name="travelling_time" value="5.0" />
+              <!-- <param name="travelling_time" value="5.0" />
               <param name="target_post_x" value="0.0" />
               <param name="target_post_y" value="0.0" />
-              <param name="target_post_z" value="1.0" />
+              <param name="target_post_z" value="1.0" /> -->
    </node>   
   </launch>

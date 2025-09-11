@@ -5,7 +5,7 @@ trajectory:
     - id: seg_01
       isRelative: true
       type: "POLYNOMIAL"
-      duration: 4
+      duration: 10
       start:
         position: [0.0, 0.0, 0.0]
         yaw: 0.0
@@ -16,9 +16,16 @@ trajectory:
     - id: seg_02
       isRelative: true
       type: "CIRCLE"
-      duration: 2.5
+      duration: 10
       circle_axis: [0.0, 0.0, 1]
       radius: 1.0
       circle_omega: 0.5
-      initial_pos: [0.0, 0.0, 1]
+
+    - id: seg_03
+      isRelative: true
+      type: "CIRCLE"
+      duration: 10
+      circle_axis: [0.0, 0.0, 1]
+      radius: 2.0
+      circle_omega: 1     
 

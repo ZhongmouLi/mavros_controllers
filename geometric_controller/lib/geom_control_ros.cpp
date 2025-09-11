@@ -490,8 +490,9 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         
         if(mission_step>mission_time_)
         {
-            ROS_INFO("Mission 2 LANDING");
-            setMissionState(MissionState::LANDING);
+            //TODO
+            // ROS_WARN("Mission 2 LANDING");
+            // setMissionState(MissionState::LANDING);
         }
 
         break;
@@ -501,6 +502,7 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         geometry_msgs::PoseStamped landing_msg;
         landing_msg.header.stamp = ros::Time::now();
         
+        ROS_WARN_STREAM_THROTTLE(2, "LANDING to "<< homePosition().transpose());
         // Use the accessor method to get home position
         Eigen::Vector3d home = homePosition();
         landing_msg.pose.position.x = home(0);
