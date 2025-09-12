@@ -1,0 +1,20 @@
+trajectory:
+  frame_id: "map"
+  description: "Sample multi-segment path"
+  segments:
+    - id: seg_01
+      isRelative: true
+      type: "CIRCLE"
+      duration: 10
+      circle_axis: [0.0, 0.0, 1]
+      radius: 1.0
+      circle_omega: 0.5
+
+    - id: seg_02
+      isRelative: true
+      type: "CIRCLE"
+      duration: 10
+      circle_axis: [0.0, 0.0, 1]
+      radius: 2.0
+      circle_omega: 1     
+

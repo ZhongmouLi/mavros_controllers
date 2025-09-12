@@ -11,6 +11,7 @@
   <!-- manually arm and offboard drone -->
   <arg name="gazebo_simulation" default="true" />
 
+
   <node pkg="geometric_controller" type="geometric_controller_node" name="geometric_controller" output="screen">
             <param name="mav_name" type="string" value="$(arg mav_name)" />
             <remap from="command/bodyrate_command" to="/mavros/setpoint_raw/attitude"/>
@@ -39,15 +40,6 @@
 
 
   <node pkg="trajectory_generator" type="trajectory_generator_node" name="trajectory_generator_node" output="screen">
-            <!-- write param for them -->
-              <!-- <param name="circle_axis_x" value="0" />
-              <param name="circle_axis_y" value="0" />
-              <param name="circle_axis_z" value="1" />
-              <param name="circle_omega" value="1" />
-              <param name="radius" value="2" /> -->
-              <!-- <param name="travelling_time" value="5.0" />
-              <param name="target_post_x" value="0.0" />
-              <param name="target_post_y" value="0.0" />
-              <param name="target_post_z" value="1.0" /> -->
+              <param name="config_file" value="$(find trajectory_generator)/config/sim_circle2circle.yaml"/>
    </node>   
   </launch>

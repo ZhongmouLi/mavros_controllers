@@ -48,7 +48,7 @@
     std::string pkg_path = ros::package::getPath("trajectory_generator");
     std::string yaml_path_default = pkg_path + "/config/example.yaml";
 
-    nh.param<std::string>("config_file", yaml_path_, yaml_path_default);
+    nh_private_.param<std::string>("config_file", yaml_path_, yaml_path_default);
     ROS_INFO("Loading trajectory configuration from: %s", yaml_path_.c_str());
 
      // Publishers
@@ -131,7 +131,7 @@
         ROS_INFO_STREAM("Offset of all trajectory segments is set to: " << initial_post_.transpose());
     }
 
-    ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is set to: " << initial_post_.transpose());
+    ROS_INFO_STREAM_THROTTLE(5.0, "Mission origin (abosolute) is set to: " << initial_post_.transpose());
     //  ROS_INFO("fuck takeoffPoseCallback 2");
 }
 
