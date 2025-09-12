@@ -69,6 +69,20 @@ void shapetrajectory::initPrimitives(Eigen::Vector3d normal_axis, const double &
   omega_ = omega;
 }
 
+void shapetrajectory::initPrimitives(const Eigen::Vector3d &start_point, const Eigen::Vector3d &normal_axis, const double &radius, const double &omega)
+{
+  intial_post_ = start_point;
+
+  // assign the vector to be rotated with radius
+  radial_<<radius,0.0,0.0;
+
+  // assign the axis of rotation, or normal axis of rotation
+  normal_axis_ = normal_axis;
+  
+  //
+  omega_ = omega;  
+}
+
 
 void shapetrajectory::generatePrimitives(Eigen::Vector3d pos) {}
 

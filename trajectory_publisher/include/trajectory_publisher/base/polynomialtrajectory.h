@@ -61,6 +61,7 @@
 
   void initPrimitives(const Eigen::Vector3d &target_post, const double &travelling_time);
 
+  void initPrimitives(const Eigen::Vector3d &start_post, const Eigen::Vector3d &target_post, const double &travelling_time); 
 
  };
  

@@ -64,6 +64,11 @@
    shapetrajectory(const double &dt, int type);
    virtual ~shapetrajectory();
    void initPrimitives(Eigen::Vector3d normal_axis, const double &radius, double omega);
+
+
+   void initPrimitives(const Eigen::Vector3d &start_point, const Eigen::Vector3d &normal_axis, const double &radius, const double &omega);
+
+
    void generatePrimitives(Eigen::Vector3d pos);
    void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel);
    void generatePrimitives(Eigen::Vector3d pos, Eigen::Vector3d vel, Eigen::Vector3d jerk);

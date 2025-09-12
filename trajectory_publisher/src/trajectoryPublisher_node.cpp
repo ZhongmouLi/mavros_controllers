@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
   ros::NodeHandle nh_private("~");
 
   // Set log level to Debug
-  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug)) {
+  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info)) {
         ros::console::notifyLoggerLevelsChanged();
     };
 

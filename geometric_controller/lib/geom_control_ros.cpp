@@ -25,7 +25,7 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
     systemstatusPub_ = nh_.advertise<mavros_msgs::CompanionProcessStatus>("mavros/companion_process/status", 1);
 
     // ------------------ Setup Services ------------------
-    ctrltriggerServ_ = nh_.advertiseService("trigger_rlcontroller", &geomControlROS::ctrltriggerCallback, this);
+    // ctrltriggerServ_ = nh_.advertiseService("trigger_rlcontroller", &geomControlROS::ctrltriggerCallback, this);
     land_service_ = nh_.advertiseService("land", &geomControlROS::landCallback, this);
 
     arming_client_ = nh_.serviceClient<mavros_msgs::CommandBool>("mavros/cmd/arming");
@@ -61,13 +61,38 @@ geomControlROS::geomControlROS(const ros::NodeHandle& nh, const ros::NodeHandle&
 
     mavVICONposeSub_ = nh_.subscribe(vicon_topic, 1, &geomControlROS::mavVICONposeCallback, this, ros::TransportHints().tcpNoDelay());
 
-    // Controller mode
-    int ctrl_mode;
-    nh_private_.param<int>("ctrl_mode", ctrl_mode, ERROR_QUATERNION);
-    setControlMode(ctrl_mode);
+    // Controller mode using attitude control or body rate control
+    std::string ctrl_mode;
+    nh_private_.param<std::string>("ctrl_mode", ctrl_mode, "attitude_control");
+    
+    // define control_mode with ControlMode having two options ControlMode::AttitudeControl and ControlMode::BodyrateControl
+    ControlMode control_mode;
+
+    // use attitude control
+    if (ctrl_mode == "attitude_control")
+        {   
+                control_mode = ControlMode::AttitudeControl; 
+                ROS_INFO_STREAM("Drone control mode: Attitude control");
+        }
+    else if (ctrl_mode == "bodyrate_control")
+        {
+                control_mode = ControlMode::BodyrateControl; 
+                ROS_INFO_STREAM("Drone control mode: Bodyrate control");
+        }
+    else 
+    {
+                ROS_WARN_STREAM("ctrl_mode is not recongnised, attitude control is used");
+                control_mode = ControlMode::AttitudeControl; 
+    }
+
+
+    // set control mode 
+    setControlMode(control_mode);
     
     // Simulation and yaw mode
-    nh_private_.param<bool>("enable_sim", sim_enable_, false);
+    nh_private_.param<bool>("enable_sim", sim_enable_, true);
+
+    nh_private_.param<double>("mission_time", mission_time_, 20);
     
     bool velocity_yaw;
     nh_private_.param<bool>("velocity_yaw", velocity_yaw, false);
@@ -214,18 +239,7 @@ void geomControlROS::mavstateCallback(const mavros_msgs::State::ConstPtr& msg)
     ROS_INFO_STREAM_THROTTLE(5.0, "Mode state "  << current_state_.mode );
 }
 
-// void geometricCtrl::mavposeCallback(const geometry_msgs::PoseStamped &msg) {
-//     if (!received_home_pose) {
-//       received_home_pose = true;
-//       home_pose_ = msg.pose;
-//       ROS_INFO_STREAM("Home pose initialized to: " << home_pose_);
-//     }
-//     mavPos_ = toEigen(msg.pose.position);
-//     mavAtt_(0) = msg.pose.orientation.w;
-//     mavAtt_(1) = msg.pose.orientation.x;
-//     mavAtt_(2) = msg.pose.orientation.y;
-//     mavAtt_(3) = msg.pose.orientation.z;
-//   }
+
 
 void geomControlROS::mavGPSposeCallback(const geometry_msgs::PoseStamped &msg)
 {
@@ -249,15 +263,6 @@ void geomControlROS::mavGPSposeCallback(const geometry_msgs::PoseStamped &msg)
 
     mavpose_receive_last_ = ros::Time::now();  // Update last received time
 
-    // Add current pose to history vector
-    // geometry_msgs::PoseStamped pose_stamped = msg;
-    // pose_stamped.header.stamp = ros::Time::now();
-    // pose_stamped.header.frame_id = "map";  // Ensure consistent frame, if needed
-
-    // posehistory_vector_.insert(posehistory_vector_.begin(), pose_stamped);
-    // if (posehistory_vector_.size() > 200) { // Limit history size
-    //     posehistory_vector_.pop_back();
-    // }
 
     ROS_INFO_STREAM_THROTTLE(5.0, "Drone pose is from GPS");
 }
@@ -299,15 +304,15 @@ void geomControlROS::mavtwistCallback(const geometry_msgs::TwistStamped& msg)
 }
 
 
-bool geomControlROS::ctrltriggerCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res)
-{
-    // Use the setter method to update the control mode
-    setControlMode(req.data ? ERROR_GEOMETRIC : ERROR_QUATERNION);
+// bool geomControlROS::ctrltriggerCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res)
+// {
+//     // Use the setter method to update the control mode
+//     setControlMode(req.data ? ERROR_GEOMETRIC : ERROR_QUATERNION);
     
-    res.success = true;
-    res.message = "Controller mode switched";
-    return true;
-}
+//     res.success = true;
+//     res.message = "Controller mode switched";
+//     return true;
+// }
 
 bool geomControlROS::landCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res)
 {
@@ -317,11 +322,12 @@ bool geomControlROS::landCallback(std_srvs::SetBool::Request& req, std_srvs::Set
     return true;
 }
 
+
 void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
 {
     switch (mission_state_) {
 
-    case MissionState::ARM_OFFBOARD: {
+    case MissionState::TO_ARM_OFFBOARD: {
         // Check if home position is set, vehicle is armed, and OFFBOARD mode is enabled
         if (!isHomePositionSet()) {
             ROS_INFO_THROTTLE(2.0, "ARM_OFFBOARD: waiting for home position...");
@@ -372,9 +378,20 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         // do pre-takeoff preparation if pre_takeoff_current_step is less than 5 seconds
         if (pre_takeoff_current_step < 5) {
             
+            // computes commands control_input_
+            //   note that  control_input_ has a type of ControlInput = std::variant<ThrustAttitude, ThrustBodyrate>;
             computeControlCmds4PreTakeoff();
+
             // State transition happens in doPreTakeoff() based on flight_arming_state_ and flight_offboard_state_
-            pubControlCommands(bodyRateCommand(), Eigen::Vector4d(1,0,0,0)); // Using identity quaternion for now
+            // pubControlCommands(bodyRateCommand(), Eigen::Vector4d(1,0,0,0)); // Using identity quaternion for now
+            
+            // obtain control_input 
+            const ControlInput control_input = controlInput();
+
+            // send control inputs to mavros topic
+            // depend on the content in control_input including ThrustAttitude and ThrustBodyrate
+            pubControlCommands(control_input);
+
 
             ROS_INFO_STREAM_THROTTLE(1.0, "PRE_TAKEOFF: spinning up motors and preparing for takeoff for " << (5 - pre_takeoff_current_step) << " seconds");
 
@@ -414,14 +431,21 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         
 
             // pubTargetPose2PX4Controller(targetPosition());
-            pubControlCommands(bodyRateCommand(), attitudeCommand() ); // Using identity quaternion for now
+            // pubControlCommands(bodyRateCommand(), attitudeCommand() ); // Using identity quaternion for now
             
+            // obtain control_input 
+            const ControlInput control_input = controlInput();
+
+            // send control inputs to mavros topic
+            // depend on the content in control_input including ThrustAttitude and ThrustBodyrate
+            pubControlCommands(control_input);
 
             // check if takeoff is completed by checking the error between the target position and current position
             // if yes, set the mission state to MISSION_EXECUTION
             auto error = (takeoffTargetPosition() - mavPost()).norm();
 
-            if ((take_off_current_step >= (takeoff_time_ + 5)) && (error < 0.5)) {
+            // if ((take_off_current_step >= (takeoff_time_ + 5)) && (error < 0.5)) {
+            if ((take_off_current_step >= (takeoffTime() + 5)) && (error < 0.5)) {
                 ROS_INFO("TAKEOFF 2 MISSION");
                 setMissionState(MissionState::MISSION_EXECUTION);
             }
@@ -445,21 +469,32 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         mission_now_ = ros::Time::now();
         double mission_step = (mission_now_ - mission_begin_).toSec();
 
-
         ROS_INFO_STREAM_THROTTLE(2.0, "Mission: begins for  " << mission_step << " seconds");
 
         // for tests
         // pubTargetPose2PX4Controller(targetPosition());
-
-
         computeControlCmds4Mission();
         
         // Publish control commands
-        pubControlCommands(bodyRateCommand(), attitudeCommand()); 
+        // pubControlCommands(bodyRateCommand(), attitudeCommand()); 
         
+        // obtain control_input 
+        const ControlInput control_input = controlInput();
+
+        // send control inputs to mavros topic
+        // depend on the content in control_input including ThrustAttitude and ThrustBodyrate
+        pubControlCommands(control_input);
+
         // Update and publish pose history
         updateAndPublishPoseHistory();
         
+        if(mission_step>mission_time_)
+        {
+            //TODO
+            // ROS_WARN("Mission 2 LANDING");
+            // setMissionState(MissionState::LANDING);
+        }
+
         break;
         }
         
@@ -467,11 +502,12 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         geometry_msgs::PoseStamped landing_msg;
         landing_msg.header.stamp = ros::Time::now();
         
+        ROS_WARN_STREAM_THROTTLE(2, "LANDING to "<< homePosition().transpose());
         // Use the accessor method to get home position
         Eigen::Vector3d home = homePosition();
         landing_msg.pose.position.x = home(0);
         landing_msg.pose.position.y = home(1);
-        landing_msg.pose.position.z = home(2) + 1.0;
+        landing_msg.pose.position.z = home(2) + 0.05;
         
         landing_msg.pose.orientation.w = 1.0;
         landing_msg.pose.orientation.x = 0.0;
@@ -479,7 +515,12 @@ void geomControlROS::cmdloopCallback(const ros::TimerEvent& event)
         landing_msg.pose.orientation.z = 0.0;
         target_pose_pub_.publish(landing_msg);
 
-        setMissionState(MissionState::LANDED);
+        auto error = (mavPost()-home).norm();
+
+        if (error < 0.1)
+            { 
+                setMissionState(MissionState::LANDED);
+            }
         break;
     }
     case MissionState::LANDED:
@@ -520,7 +561,6 @@ void geomControlROS::statusloopCallback(const ros::TimerEvent& event)
     
 }
 
-
 void geomControlROS::takeoffPostloopCallback(const ros::TimerEvent& event)
 {
 
@@ -534,25 +574,6 @@ void geomControlROS::takeoffPostloopCallback(const ros::TimerEvent& event)
     ROS_INFO_STREAM_THROTTLE(5.0, "Takeoff position is published: " 
         << takeoffTargetPosition().transpose());
 }
-
-
-    // // Update the state variables based on current_state_ regardless of simulation mode
-    // // Update the state variables based on current_state_
-    // if (current_state_.armed) {
-    //     setFlightArmingState(FlightArmingState::ARMED);
-    // } else {
-    //     setFlightArmingState(FlightArmingState::DISARMED);
-    // }
-
-    // // Set offboard state based on flight mode, independent of arming status
-    // if (current_state_.mode == "OFFBOARD") {
-    //     setFlightOffboardState(FlightOffboardState::OFFBOARD_ENABLED);
-    // } else {
-    //     setFlightOffboardState(FlightOffboardState::OFFBOARD_DISABLED);
-    // }
-    // // Publish system status
-    // pubSystemStatus();
-
 
 void geomControlROS::pubReferencePose(const Eigen::Vector3d& target_position, const Eigen::Vector4d& target_attitude)
 {
@@ -579,24 +600,72 @@ void geomControlROS::pubTargetPose2PX4Controller(const Eigen::Vector3d& target_p
 
 }
 
-
-void geomControlROS::pubControlCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude)
+void geomControlROS::pubControlCommands(const ControlInput control_input) const
 {
+
+    // 1. define mavros msg for control input
     mavros_msgs::AttitudeTarget msg;
     msg.header.stamp = ros::Time::now();
     msg.header.frame_id = "map";
-    msg.body_rate.x = cmd(0);
-    msg.body_rate.y = cmd(1);
-    msg.body_rate.z = cmd(2);
-    msg.type_mask = msg.IGNORE_PITCH_RATE + msg.IGNORE_ROLL_RATE + msg.IGNORE_YAW_RATE;
-    msg.orientation.w = target_attitude(0);
-    msg.orientation.x = target_attitude(1);
-    msg.orientation.y = target_attitude(2);
-    msg.orientation.z = target_attitude(3);
-    msg.thrust = cmd(3);
+
+    // 2. get command msg from control input
+    // control_input is ThrustAttitude if thrust + attitude
+    if (std::holds_alternative<ThrustAttitude>(control_input))
+    {
+        ThrustAttitude cmd = std::get<ThrustAttitude>(control_input);    
+
+        // ignore rate cmds
+        msg.type_mask = msg.IGNORE_PITCH_RATE + msg.IGNORE_ROLL_RATE + msg.IGNORE_YAW_RATE;
+
+        // thrust 
+        msg.thrust = cmd.thrust;
+
+        // attitude 
+        msg.orientation.w = cmd.attitude.w();
+        msg.orientation.x = cmd.attitude.x();
+        msg.orientation.y = cmd.attitude.y();
+        msg.orientation.z = cmd.attitude.z();
+    }
+    else if (std::holds_alternative<ThrustBodyrate>(control_input)) //// control_input is ThrustBodyrate if thrust + bodyrate
+    {
+        ThrustBodyrate cmd = std::get<ThrustBodyrate>(control_input); 
+
+        // thrust 
+        msg.thrust = cmd.thrust;
+
+        // bodyrate
+        msg.body_rate.x = cmd.bodyrate(0);
+        msg.body_rate.y = cmd.bodyrate(1);
+        msg.body_rate.z = cmd.bodyrate(2);
+    }
+    else [[unlikely]]
+    {
+        ROS_ERROR_STREAM("control_input not corret");
+    }
+
+
+    // publish to topic /command/bodyrate_command
     angularVelPub_.publish(msg);
 }
 
+// void geomControlROS::pubControlCommands(const Eigen::Vector4d& cmd, const Eigen::Vector4d& target_attitude)
+// {
+//     mavros_msgs::AttitudeTarget msg;
+//     msg.header.stamp = ros::Time::now();
+//     msg.header.frame_id = "map";
+//     msg.body_rate.x = cmd(0);
+//     msg.body_rate.y = cmd(1);
+//     msg.body_rate.z = cmd(2);
+//     msg.type_mask = msg.IGNORE_PITCH_RATE + msg.IGNORE_ROLL_RATE + msg.IGNORE_YAW_RATE;
+//     msg.orientation.w = target_attitude(0);
+//     msg.orientation.x = target_attitude(1);
+//     msg.orientation.y = target_attitude(2);
+//     msg.orientation.z = target_attitude(3);
+//     msg.thrust = cmd(3);
+
+//     // publish to topic /command/bodyrate_command
+//     angularVelPub_.publish(msg);
+// }
 
 void geomControlROS::pubTakeoffPose()
 {
@@ -617,6 +686,7 @@ void geomControlROS::pubTakeoffPose()
 
     takeoffPosePub_.publish(takeoff_pose);
 }
+
 
 void geomControlROS::updateAndPublishPoseHistory()
 {
@@ -656,38 +726,50 @@ void geomControlROS::pubSystemStatus() {
 
 
 void geomControlROS::dynamicReconfigureCallback(geometric_controller::GeometricControllerConfig &config,
-                                               uint32_t level) {
-
+                                               uint32_t level) 
+{
   // obtain the current values of controller gains
   Eigen::Vector3d Kpos = kPPosController();
   Eigen::Vector3d Kvel = kVPosController();
   double max_feedback_acc = maxFeedbackAcceleration();
 
   
-  if(max_feedback_acc != config.max_acc) {
-      max_feedback_acc = config.max_acc;
-      setMaxFeedbackAcceleration(max_feedback_acc);
-      ROS_INFO("Reconfigure request : max_feedback_acc  = %.2f  ", config.max_acc);
-    }
-    if (Kpos[0] != -config.Kp_x) {
-        Kpos[0] = -config.Kp_x;
-        ROS_INFO("Reconfigure request : Kp_x  = %.2f  ", config.Kp_x);
-    } else if (Kpos[1] != -config.Kp_y) {
-        Kpos[1] = -config.Kp_y;
-        ROS_INFO("Reconfigure request : Kp_y  = %.2f  ", config.Kp_y);
-    } else if (Kpos[2] != -config.Kp_z) {
-        Kpos[2] = -config.Kp_z;
-        ROS_INFO("Reconfigure request : Kp_z  = %.2f  ", config.Kp_z);
-    } else if (Kvel[0] != -config.Kv_x) {
-        Kvel[0] = -config.Kv_x;
-        ROS_INFO("Reconfigure request : Kv_x  = %.2f  ", config.Kv_x);
-    } else if (Kvel[1] != -config.Kv_y) {
-        Kvel[1] = -config.Kv_y;
-        ROS_INFO("Reconfigure request : Kv_y =%.2f  ", config.Kv_y);
-    } else if (Kvel[2] != -config.Kv_z) {
-        Kvel[2] = -config.Kv_z;
-        ROS_INFO("Reconfigure request : Kv_z  = %.2f  ", config.Kv_z);
-    }
+    if(max_feedback_acc != config.max_acc) 
+        {
+        max_feedback_acc = config.max_acc;
+        setMaxFeedbackAcceleration(max_feedback_acc);
+        ROS_INFO("Reconfigure request : max_feedback_acc  = %.2f  ", config.max_acc);
+        }
+    if (Kpos[0] != -config.Kp_x) 
+        {
+            Kpos[0] = -config.Kp_x;
+            ROS_INFO("Reconfigure request : Kp_x  = %.2f  ", config.Kp_x);
+        } 
+    else if (Kpos[1] != -config.Kp_y) 
+        {
+            Kpos[1] = -config.Kp_y;
+            ROS_INFO("Reconfigure request : Kp_y  = %.2f  ", config.Kp_y);
+        } 
+    else if (Kpos[2] != -config.Kp_z) 
+        {
+            Kpos[2] = -config.Kp_z;
+            ROS_INFO("Reconfigure request : Kp_z  = %.2f  ", config.Kp_z);
+        } 
+    else if (Kvel[0] != -config.Kv_x) 
+        {
+            Kvel[0] = -config.Kv_x;
+            ROS_INFO("Reconfigure request : Kv_x  = %.2f  ", config.Kv_x);
+        } 
+    else if (Kvel[1] != -config.Kv_y) 
+        {
+            Kvel[1] = -config.Kv_y;
+            ROS_INFO("Reconfigure request : Kv_y =%.2f  ", config.Kv_y);
+        } 
+    else if (Kvel[2] != -config.Kv_z) 
+        {
+            Kvel[2] = -config.Kv_z;
+            ROS_INFO("Reconfigure request : Kv_z  = %.2f  ", config.Kv_z);
+        }
 
     setPostControlPGains(Kpos);
     setPostControlDGains(Kvel);

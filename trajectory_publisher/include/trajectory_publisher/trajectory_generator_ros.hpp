@@ -19,6 +19,8 @@
 #include <std_msgs/Int32.h>
 #include <std_msgs/String.h>
 #include <std_srvs/SetBool.h>
+#include <yaml-cpp/yaml.h>
+#include <array>
 #include "controller_msgs/FlatTarget.h"
 #include "trajectory_publisher/trajectory_generator.hpp"
 #include "trajectory_publisher/base/common_ros.h"
@@ -44,8 +46,11 @@ private:
     ros::Timer loop_timer_;   // Timer for slower loop (e.g., visualization, updates)
     ros::Timer ref_timer_;    // Timer for fast loop (publishing references at high rate)
 
+    // Trajectory yaml config file path
+    std::string yaml_path_;
+
     // Trajectory generator
-    std::shared_ptr<TrajectoryGenerator> generator_;  // Smart pointer holding the trajectory generator
+    std::shared_ptr<TrajectoryGenerator> ptr_traj_generator_;  // Smart pointer holding the trajectory generator
 
     // Current target state (calculated at each time step)
     Eigen::Vector3d p_targ_;  // Target position [x, y, z]
@@ -53,15 +58,15 @@ private:
     Eigen::Vector3d a_targ_;  // Target acceleration [ax, ay, az]
 
     // Circle trajectory configuration
-    Eigen::Vector3d initial_post_{0,0,1};  // Center position of the circle
+    Eigen::Vector3d initial_post_{0,0,0};  // Center position of the circle
     Eigen::Vector3d axis_;    // Axis of rotation (normal vector)
     double radius_;           // Radius of the circle
     double omega_;            // Angular speed (rad/s)
 
-    // Polynomial trajectory configuration
-    Eigen::Vector3d target_post_{0,0,1}; // Target position for polynomial trajectory
+    // // Polynomial trajectory configuration
+    // Eigen::Vector3d target_post_{0,0,1}; // Target position for polynomial trajectory
     
-    double travelling_time_{1.0};        // Duration of the polynomial trajectory
+    // double travelling_time_{1.0};        // Duration of the polynomial trajectory
 
     // Timing
     ros::Time start_time_;    // Time when the trajectory was started
@@ -75,6 +80,9 @@ private:
 public:
     // Constructor: initializes publishers, services, timers, and generator
     TrajectoryGeneratorROS(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+
+
+    void inputTrajectoryConfig();
 
     // Service callback: handles /start service requests to start or stop publishing
     bool startCallback(std_srvs::SetBool::Request& req, std_srvs::SetBool::Response& res);
@@ -91,4 +99,7 @@ public:
 
     // Fast loop timer callback: publishes reference states (position, velocity, acceleration)
     void refCallback(const ros::TimerEvent&);
+
+
+    void rosLogTrajectory();
 };
