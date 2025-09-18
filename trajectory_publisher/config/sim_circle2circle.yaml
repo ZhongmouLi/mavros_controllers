@@ -5,7 +5,7 @@ trajectory:
     - id: seg_01
       isRelative: true
       type: "CIRCLE"
-      duration: 10
+      duration: 12
       circle_axis: [0.0, 0.0, 1]
       radius: 1.0
       circle_omega: 0.5
@@ -13,7 +13,7 @@ trajectory:
     - id: seg_02
       isRelative: true
       type: "CIRCLE"
-      duration: 10
+      duration: 12
       circle_axis: [0.0, 0.0, 1]
       radius: 2.0
       circle_omega: 1     
