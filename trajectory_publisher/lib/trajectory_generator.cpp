@@ -166,7 +166,7 @@ void TrajectoryGenerator::chooseAndConfigureByTime(const double &t)
     // 3) Configure generator with segment-specific details
     switch (current_trajectory_type_) {
         case TrajectoryType::POLYNOMIAL: {
-            auto p = std::static_pointer_cast<PolynomialTrajStrct>(active_traj_config_);
+            auto p = std::dynamic_pointer_cast<PolynomialTrajStrct>(active_traj_config_);
 
             // Option A: use your 3-arg overload (start, target, time):
             // Eigen::Vector3d start_pos = initPosition() + Eigen::Vector3d{p->start_position[0], p->start_position[1], p->start_position[2]};
@@ -188,7 +188,7 @@ void TrajectoryGenerator::chooseAndConfigureByTime(const double &t)
 
         case TrajectoryType::CIRCLE: {
 
-            auto c = std::static_pointer_cast<CircleTrajStrct>(active_traj_config_);
+            auto c = std::dynamic_pointer_cast<CircleTrajStrct>(active_traj_config_);
 
             Eigen::Vector3d axis{c->circle_axis[0], c->circle_axis[1], c->circle_axis[2]};
 
